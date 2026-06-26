@@ -22,6 +22,13 @@ const protect = async (req, res, next) => {
         message: "User not found",
       });
     }
+    // Prevent suspended users from accessing protected routes
+    if (user.isSuspended) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account has been suspended.",
+      });
+    }
 
     req.user = user;
     next();
@@ -35,16 +42,16 @@ const protect = async (req, res, next) => {
   }
 };
 
-const adminOnly = (req, res, next) => {
-  if (!req.user || req.user.role !== "admin") {
-    return res.status(403).json({
-      success: false,
-      message: "Admin only",
-    });
-  }
+// const adminOnly = (req, res, next) => {
+//   if (!req.user || req.user.role !== "admin") {
+//     return res.status(403).json({
+//       success: false,
+//       message: "Admin only",
+//     });
+//   }
 
-  next();
-};
+//   next();
+// };
 
 // OPTIONAL AUTH
 const protectOptional = async (req, res, next) => {
@@ -70,4 +77,4 @@ const protectOptional = async (req, res, next) => {
   }
 };
 
-module.exports = { protect, adminOnly, protectOptional };
+module.exports = { protect, protectOptional };

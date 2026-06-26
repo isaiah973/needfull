@@ -9,9 +9,9 @@ dotenv.config();
 
 const connectDB = require("./config/db");
 const userRoutes = require("./Routes/userRoutes");
-const productRoutes = require("./Routes/productRoutes");
-const paystackRoutes = require("./Routes/paystackRoutes");
-const orderRoutes = require("./Routes/orderRoutes");
+const itemRoutes = require("./Routes/itemRoutes");
+// const paystackRoutes = require("./Routes/paystackRoutes");
+const orderRoutes = require("./Routes/requestRoutes");
 
 const app = express();
 
@@ -24,17 +24,16 @@ app.use(
     credentials: true,
   }),
 );
-app.use("/api/paystack", paystackRoutes);
+// app.use("/api/paystack", paystackRoutes);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use(errorHandler);
 
 // routes after middleware
 app.use("/api/users", userRoutes);
-app.use("/api/products", productRoutes);
-app.use("/api/orders", orderRoutes);
+app.use("/api/items", itemRoutes);
+app.use("/api/requests", requestRoutes);
 
 app.get("/", (req, res) => {
   res.send("API is running...");
@@ -45,3 +44,4 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+app.use(errorHandler);
