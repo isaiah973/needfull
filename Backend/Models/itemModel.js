@@ -58,9 +58,10 @@ const itemSchema = new mongoose.Schema(
       default: "available",
     },
 
-    isApproved: {
-      type: Boolean,
-      default: true,
+    moderationStatus: {
+      type: String,
+      enum: ["approved", "pending", "rejected"],
+      default: "approved",
     },
   },
   {

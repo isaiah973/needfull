@@ -5,6 +5,9 @@ const cookieParser = require("cookie-parser");
 const errorHandler = require("./Middleware/errorMiddleware");
 const requestRoutes = require("./Routes/requestRoutes");
 
+const adminRoutes = require("./Routes/adminRoutes");
+const reportRoutes = require("./Routes/reportRoutes");
+
 dotenv.config();
 
 const connectDB = require("./config/db");
@@ -35,6 +38,8 @@ app.use("/api/users", userRoutes);
 app.use("/api/items", itemRoutes);
 app.use("/api/requests", requestRoutes);
 
+app.use("/api/admin", adminRoutes);
+app.use("/api/reports", reportRoutes);
 app.get("/", (req, res) => {
   res.send("API is running...");
 });
