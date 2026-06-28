@@ -29,15 +29,54 @@ const createItem = async (req, res) => {
 
 const getAllItems = async (req, res) => {
   try {
-    const items = await Item.find({
+    const { search, category, location, condition, sort } = req.query;
+
+    // Base filter
+    let filter = {
       isApproved: true,
       status: "available",
-    })
-      .populate("owner", "name")
-      .sort({ createdAt: -1 });
+    };
+
+    // Search by title
+    if (search) {
+      filter.title = {
+        $regex: search,
+        $options: "i",
+      };
+    }
+
+    // Filter by category
+    if (category) {
+      filter.category = category;
+    }
+
+    // Filter by location
+    if (location) {
+      filter.location = location;
+    }
+
+    // Filter by condition
+    if (condition) {
+      filter.condition = condition;
+    }
+
+    let query = Item.find(filter).populate("owner", "name");
+
+    // Sorting
+    if (sort === "newest") {
+      query = query.sort({ createdAt: -1 });
+    } else if (sort === "oldest") {
+      query = query.sort({ createdAt: 1 });
+    } else {
+      // Default: newest first
+      query = query.sort({ createdAt: -1 });
+    }
+
+    const items = await query;
 
     res.status(200).json({
       success: true,
+      count: items.length,
       items,
     });
   } catch (error) {

@@ -1,5 +1,6 @@
 const Request = require("../Models/requestModel");
 const Item = require("../Models/itemModel");
+const Notification = require("../Models/notificationModel");
 
 const createRequest = async (req, res) => {
   try {
@@ -19,16 +20,47 @@ const createRequest = async (req, res) => {
       });
     }
 
+    // Automatically expire subscription if it has ended
+    if (
+      req.user.isSubscribed &&
+      req.user.subscriptionExpiresAt &&
+      req.user.subscriptionExpiresAt < new Date()
+    ) {
+      req.user.isSubscribed = false;
+      req.user.subscriptionExpiresAt = null;
+      await req.user.save();
+    }
+
+    // Free users can only have 5 active requests
+    if (!req.user.isSubscribed) {
+      const activeRequests = await Request.countDocuments({
+        requester: req.user._id,
+        status: {
+          $in: ["pending", "approved"],
+        },
+      });
+
+      if (activeRequests >= 5) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "You have reached your limit of 5 active requests. Subscribe to Needful Plus for unlimited requests.",
+        });
+      }
+    }
+
     const existingRequest = await Request.findOne({
       item: item._id,
       requester: req.user._id,
     });
+
     if (item.status !== "available") {
       return res.status(400).json({
         success: false,
         message: "Item is no longer available",
       });
     }
+
     if (existingRequest) {
       return res.status(400).json({
         success: false,
@@ -38,13 +70,21 @@ const createRequest = async (req, res) => {
 
     const request = await Request.create({
       item: item._id,
-      owner: item.owner,
       requester: req.user._id,
       message: req.body.message,
     });
 
     item.requestCount += 1;
     await item.save();
+
+    await Notification.create({
+      recipient: item.owner,
+      sender: req.user._id,
+      type: "new_request",
+      item: item._id,
+      request: request._id,
+      message: `${req.user.name} requested your "${item.title}".`,
+    });
 
     res.status(201).json({
       success: true,
@@ -80,8 +120,17 @@ const getMyRequests = async (req, res) => {
 
 const getReceivedRequests = async (req, res) => {
   try {
-    const requests = await Request.find({
+    // Find all items owned by the logged-in user
+    const myItems = await Item.find({
       owner: req.user._id,
+    }).select("_id");
+
+    // Extract only the item IDs
+    const itemIds = myItems.map((item) => item._id);
+
+    // Find requests for those items
+    const requests = await Request.find({
+      item: { $in: itemIds },
     })
       .populate("item")
       .populate("requester", "name email")

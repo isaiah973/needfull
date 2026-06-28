@@ -126,6 +126,14 @@ const userSchema = new mongoose.Schema(
       type: [addressSchema],
       default: [],
     },
+    isSubscribed: {
+      type: Boolean,
+      default: false,
+    },
+
+    subscriptionExpiresAt: {
+      type: Date,
+    },
 
     savedItems: [
       {

@@ -4,6 +4,7 @@ const dotenv = require("dotenv");
 const cookieParser = require("cookie-parser");
 const errorHandler = require("./Middleware/errorMiddleware");
 const requestRoutes = require("./Routes/requestRoutes");
+const notificationRoutes = require("./Routes/notificationRoutes");
 
 const adminRoutes = require("./Routes/adminRoutes");
 const reportRoutes = require("./Routes/reportRoutes");
@@ -40,6 +41,7 @@ app.use("/api/requests", requestRoutes);
 
 app.use("/api/admin", adminRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/notifications", notificationRoutes);
 app.get("/", (req, res) => {
   res.send("API is running...");
 });
