@@ -11,6 +11,7 @@ const {
   updateProfile,
   getSavedItems,
   resetPassword,
+  deleteAccount,
 } = require("../Controllers/userController");
 const { protect } = require("../Middleware/authMiddleware");
 
@@ -23,6 +24,7 @@ userRoutes.post("/logout", logoutUser);
 userRoutes.post("/resend-verification-code", resendVerificationCode);
 userRoutes.post("/forgot-password", forgotPassword);
 userRoutes.post("/reset-password", resetPassword);
+userRoutes.delete("/delete-account", protect, deleteAccount);
 
 userRoutes.get("/profile", protect, getProfile);
 

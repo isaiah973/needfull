@@ -1,0 +1,28 @@
+const categories = [
+  "Electronics",
+  "Furniture",
+  "Clothing",
+  "Shoes",
+  "Books",
+  "Kitchen",
+  "Bedroom",
+  "Living Room",
+  "Bathroom",
+  "Home Decor",
+  "Appliances",
+  "Phones & Tablets",
+  "Computers",
+  "Office Supplies",
+  "Baby & Kids",
+  "Toys & Games",
+  "Sports & Fitness",
+  "Health & Beauty",
+  "Food",
+  "Automotive",
+  "Garden",
+  "Pet Supplies",
+  "Musical Instruments",
+  "Other",
+];
+
+module.exports = categories;

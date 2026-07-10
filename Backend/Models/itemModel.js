@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const categories = require("../constants/categories");
 
 const itemSchema = new mongoose.Schema(
   {
@@ -21,6 +22,7 @@ const itemSchema = new mongoose.Schema(
 
     category: {
       type: String,
+      enum: categories,
       required: true,
     },
 
@@ -62,6 +64,11 @@ const itemSchema = new mongoose.Schema(
       type: String,
       enum: ["approved", "pending", "rejected"],
       default: "approved",
+    },
+
+    isActive: {
+      type: Boolean,
+      default: true,
     },
   },
   {

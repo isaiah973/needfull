@@ -5,6 +5,7 @@ const cookieParser = require("cookie-parser");
 const errorHandler = require("./Middleware/errorMiddleware");
 const requestRoutes = require("./Routes/requestRoutes");
 const notificationRoutes = require("./Routes/notificationRoutes");
+const categoryRoutes = require("./Routes/categoryRoutes");
 
 const adminRoutes = require("./Routes/adminRoutes");
 const reportRoutes = require("./Routes/reportRoutes");
@@ -37,6 +38,7 @@ app.use(cookieParser());
 // routes after middleware
 app.use("/api/users", userRoutes);
 app.use("/api/items", itemRoutes);
+app.use("/api/categories", categoryRoutes);
 app.use("/api/requests", requestRoutes);
 
 app.use("/api/admin", adminRoutes);

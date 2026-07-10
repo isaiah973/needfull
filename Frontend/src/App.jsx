@@ -1,22 +1,51 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Dashboard from "./pages/Dashboard";
-import Profile from "./pages/Profile";
+import VerifyEmail from "./pages/VerifyEmail";
+
+import ItemDetails from "./pages/items/ItemDetails";
+
+import GuestRoute from "./components/GuestRoute";
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/profile" element={<Profile />} />
-      </Routes>
-    </BrowserRouter>
+    <Routes>
+      {/* Public */}
+      <Route path="/" element={<Home />} />
+
+      <Route path="/items/:id" element={<ItemDetails />} />
+
+      {/* Authentication */}
+
+      <Route
+        path="/login"
+        element={
+          <GuestRoute>
+            <Login />
+          </GuestRoute>
+        }
+      />
+
+      <Route
+        path="/register"
+        element={
+          <GuestRoute>
+            <Register />
+          </GuestRoute>
+        }
+      />
+
+      <Route
+        path="/verify-email"
+        element={
+          <GuestRoute>
+            <VerifyEmail />
+          </GuestRoute>
+        }
+      />
+    </Routes>
   );
 }
 

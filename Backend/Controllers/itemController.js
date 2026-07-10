@@ -1,9 +1,20 @@
 const mongoose = require("mongoose");
 const Item = require("../Models/itemModel");
+const uploadToCloudinary = require("../utils/uploadToCloudinary");
 
 const createItem = async (req, res) => {
   try {
     const { title, description, category, condition, location } = req.body;
+
+    let images = [];
+
+    if (req.files && req.files.length > 0) {
+      const uploadedImages = await Promise.all(
+        req.files.map((file) => uploadToCloudinary(file.buffer)),
+      );
+
+      images = uploadedImages.map((img) => img.secure_url);
+    }
 
     const item = await Item.create({
       title,
@@ -12,7 +23,7 @@ const createItem = async (req, res) => {
       condition,
       location,
       owner: req.user._id,
-      images: [],
+      images,
     });
 
     res.status(201).json({
@@ -33,8 +44,9 @@ const getAllItems = async (req, res) => {
 
     // Base filter
     let filter = {
-      isApproved: true,
+      moderationStatus: "approved",
       status: "available",
+      isActive: true, // hide items from deleted users
     };
 
     // Search by title
@@ -60,7 +72,7 @@ const getAllItems = async (req, res) => {
       filter.condition = condition;
     }
 
-    let query = Item.find(filter).populate("owner", "name");
+    let query = Item.find(filter).populate("owner", "name avatar");
 
     // Sorting
     if (sort === "newest") {
@@ -89,9 +101,36 @@ const getAllItems = async (req, res) => {
 
 const getSingleItem = async (req, res) => {
   try {
-    const item = await Item.findById(req.params.id).populate(
-      "owner",
-      "name email",
+    const item = await Item.findOne({
+      _id: req.params.id,
+      isActive: true,
+    }).populate("owner", "name avatar");
+
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        message: "Item not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      item,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const recordView = async (req, res) => {
+  try {
+    const item = await Item.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { views: 1 } },
+      { new: true },
     );
 
     if (!item) {
@@ -101,12 +140,9 @@ const getSingleItem = async (req, res) => {
       });
     }
 
-    item.views += 1;
-    await item.save();
-
     res.status(200).json({
       success: true,
-      item,
+      views: item.views,
     });
   } catch (error) {
     res.status(500).json({
@@ -127,6 +163,8 @@ const getMyItems = async (req, res) => {
       items,
     });
   } catch (error) {
+    console.log(error);
+
     res.status(500).json({
       success: false,
       message: error.message,
@@ -137,6 +175,14 @@ const getMyItems = async (req, res) => {
 const updateItem = async (req, res) => {
   try {
     const item = req.item; // injected by ownerOnly middleware
+
+    // Prevent updating inactive items
+    if (!item.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: "This item is no longer active and cannot be updated.",
+      });
+    }
 
     const allowedFields = [
       "title",
@@ -204,6 +250,7 @@ module.exports = {
   createItem,
   getAllItems,
   getSingleItem,
+  recordView,
   getMyItems,
   updateItem,
   deleteItem,

@@ -5,6 +5,7 @@ const {
   createItem,
   getAllItems,
   getSingleItem,
+  recordView,
   updateItem,
   deleteItem,
   getMyItems,
@@ -26,6 +27,8 @@ router.get("/my-items", protect, getMyItems);
 router.get("/", getAllItems);
 
 router.post("/create", protect, upload.array("images", 5), createItem);
+
+router.post("/:id/view", recordView);
 
 router.get("/:id", getSingleItem);
 

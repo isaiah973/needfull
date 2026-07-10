@@ -9,6 +9,7 @@ const {
 } = require("../utils/sendEmail");
 
 // REGISTER
+
 const registerUser = async (req, res) => {
   try {
     const { name, email, password, phone } = req.body;
@@ -17,6 +18,18 @@ const registerUser = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Name, email and password are required",
+      });
+    }
+
+    // Strong password validation
+    const passwordRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.#_-])[A-Za-z\d@$!%*?&.#_-]{8,}$/;
+
+    if (!passwordRegex.test(password)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.",
       });
     }
 
@@ -61,6 +74,7 @@ const registerUser = async (req, res) => {
     });
   }
 };
+
 const saveItem = async (req, res) => {
   try {
     const itemId = req.params.id;
@@ -262,6 +276,12 @@ const loginUser = async (req, res) => {
         message: "Invalid credentials",
       });
     }
+    if (user.isDeleted) {
+      return res.status(403).json({
+        success: false,
+        message: "This account has been deleted.",
+      });
+    }
 
     if (!user.isVerified) {
       return res.status(400).json({
@@ -458,6 +478,38 @@ const resetPassword = async (req, res) => {
   }
 };
 
+const deleteAccount = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Soft delete user
+    await User.findByIdAndUpdate(userId, {
+      isDeleted: true,
+      deletedAt: new Date(),
+    });
+
+    // Hide user's items
+    await Item.updateMany(
+      {
+        owner: userId,
+      },
+      {
+        isActive: false,
+      },
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Account deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   registerUser,
   verifyEmail,
@@ -471,4 +523,5 @@ module.exports = {
   getSavedItems,
   saveItem,
   removeSavedItem,
+  deleteAccount,
 };
