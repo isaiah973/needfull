@@ -1,21 +1,42 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useEffect, useRef, useState } from "react";
 
-import { Bell, Moon, Sun, Menu, X, Search, User, Plus } from "lucide-react";
+import { Bell, Moon, Menu, X, Search, User, Plus } from "lucide-react";
 
+import { categories } from "../data/categories";
 const Navbar = () => {
+  const profileRef = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
-
+  const [profileOpen, setProfileOpen] = useState(false);
   const navigate = useNavigate();
+  const [categoryOpen, setCategoryOpen] = useState(false);
 
   const { user, logout, isAuthenticated } = useAuth();
+  const categoryRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (categoryRef.current && !categoryRef.current.contains(event.target)) {
+        setCategoryOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   return (
     <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200">
       <div className="max-w-7xl mx-auto h-16 px-5 flex items-center justify-between">
         {/* Logo */}
-        <div className="flex items-center gap-2 cursor-pointer">
+        <div
+          onClick={() => navigate("/")}
+          className="flex items-center gap-2 cursor-pointer"
+        >
           <div className="h-10 w-10 rounded-2xl bg-teal-700 flex items-center justify-center text-white font-bold text-lg">
             N
           </div>
@@ -41,9 +62,39 @@ const Navbar = () => {
             Home
           </button>
 
-          <button className="px-5 py-2 rounded-full text-gray-700 hover:bg-gray-100 transition">
-            Categories
-          </button>
+          <div className="relative" ref={categoryRef}>
+            <button onClick={() => setCategoryOpen((prev) => !prev)}>
+              Categories
+            </button>
+
+            {categoryOpen && (
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[600px] max-w-[90vw] rounded-2xl bg-white border border-gray-200 shadow-2xl p-6 z-50">
+                <div className="grid grid-cols-3 gap-3 ">
+                  {categories.map((category) => (
+                    <button
+                      key={category}
+                      onClick={() => {
+                        navigate(`/?category=${encodeURIComponent(category)}`);
+                        setCategoryOpen(false);
+                      }}
+                      className="text-left rounded-lg px-3 py-2 hover:bg-teal-50 hover:text-teal-700 transition"
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => {
+                    navigate("/");
+                    setCategoryOpen(false);
+                  }}
+                  className="w-full border-t px-4 py-3 text-center font-medium text-teal-700 hover:bg-teal-50"
+                >
+                  View All Categories
+                </button>
+              </div>
+            )}
+          </div>
 
           <button
             onClick={() =>
@@ -64,18 +115,10 @@ const Navbar = () => {
           </button>
 
           {isAuthenticated ? (
-            <div className="relative group">
+            <div className="relative" ref={profileRef}>
               <button
-                className="
-      h-11
-      w-11
-      rounded-full
-      bg-gray-100
-      flex
-      items-center
-      justify-center
-      overflow-hidden
-      "
+                onClick={() => setProfileOpen((prev) => !prev)}
+                className="h-11 w-11 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden hover:bg-gray-200 transition"
               >
                 {user?.avatar ? (
                   <img
@@ -88,73 +131,46 @@ const Navbar = () => {
                 )}
               </button>
 
-              <div
-                className="
-      hidden
-      group-hover:block
-      absolute
-      right-0
-      mt-3
-      w-48
-      bg-white
-      rounded-xl
-      shadow-lg
-      border
-      p-3
-      "
-              >
-                <p className="font-semibold text-gray-800 px-3">{user?.name}</p>
+              {profileOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
+                  <div className="px-4 py-3 border-b">
+                    <p className="font-semibold text-gray-800">{user?.name}</p>
+                    <p className="text-sm text-gray-500 truncate">
+                      {user?.email}
+                    </p>
+                  </div>
 
-                <button
-                  onClick={() => navigate("/profile")}
-                  className="
-        w-full
-        text-left
-        px-3
-        py-2
-        mt-2
-        hover:bg-gray-100
-        rounded-lg
-        "
-                >
-                  Profile
-                </button>
+                  <button
+                    onClick={() => {
+                      setProfileOpen(false);
+                      navigate("/profile");
+                    }}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-100 transition"
+                  >
+                    Profile
+                  </button>
 
-                <button
-                  onClick={logout}
-                  className="
-        w-full
-        text-left
-        px-3
-        py-2
-        hover:bg-gray-100
-        rounded-lg
-        text-red-600
-        "
-                >
-                  Logout
-                </button>
-              </div>
+                  <button
+                    onClick={() => {
+                      setProfileOpen(false);
+                      logout();
+                    }}
+                    className="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 transition"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <button
               onClick={() => navigate("/login")}
-              className="
-    h-11
-    w-11
-    rounded-full
-    bg-gray-100
-    flex
-    items-center
-    justify-center
-    hover:bg-gray-200
-    "
+              className="h-11 w-11 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition"
             >
               <User size={20} />
             </button>
           )}
         </div>
-
         {/* Mobile */}
 
         <button
