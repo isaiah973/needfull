@@ -16,7 +16,9 @@ const requestSchema = new mongoose.Schema(
 
     message: {
       type: String,
-      default: "",
+      required: true,
+      trim: true,
+      maxlength: 500,
     },
 
     status: {

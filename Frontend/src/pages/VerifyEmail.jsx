@@ -47,7 +47,7 @@ const VerifyEmail = () => {
       <div className="bg-white w-full max-w-md rounded-2xl shadow-xl border border-gray-100 p-8">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-teal-700">Needful</h1>
+          <h1 className="text-3xl font-bold text-primary-700">Needful</h1>
 
           <p className="text-gray-500 mt-2">Verify your email address</p>
         </div>
@@ -73,7 +73,7 @@ const VerifyEmail = () => {
                             border-gray-300
                             outline-none
                             focus:ring-2
-                            focus:ring-teal-600
+                            focus:ring-primary-600
                             "
             />
           </div>
@@ -102,7 +102,7 @@ const VerifyEmail = () => {
                             border-gray-300
                             outline-none
                             focus:ring-2
-                            focus:ring-teal-600
+                            focus:ring-primary-600
                             "
             />
           </div>
@@ -121,8 +121,8 @@ const VerifyEmail = () => {
             disabled={loading}
             className="
                         w-full
-                        bg-teal-700
-                        hover:bg-teal-800
+                        bg-primary-700
+                        hover:bg-primary-800
                         text-white
                         py-3
                         rounded-xl

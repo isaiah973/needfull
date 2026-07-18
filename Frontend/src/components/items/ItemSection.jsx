@@ -27,17 +27,17 @@ const ItemsSection = () => {
   }
 
   return (
-    <section className="bg-slate-50 py-16">
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="mb-10">
-          <h2 className="text-4xl font-bold">Browse Free Items</h2>
+    <section className="bg-slate-50 py-10 sm:py-16">
+      <div className="mx-auto max-w-7xl px-3 sm:px-6">
+        <div className="mb-7 sm:mb-10">
+          <h2 className="text-3xl font-bold sm:text-4xl">Browse Free Items</h2>
 
           <p className="mt-2 text-slate-500">
             Find useful items shared by people around you.
           </p>
         </div>
 
-        <div className="grid gap-8 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
           {items.map((item) => (
             <ItemCard key={item._id} item={item} />
           ))}

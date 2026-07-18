@@ -4,12 +4,20 @@ const Notification = require("../Models/notificationModel");
 
 const createRequest = async (req, res) => {
   try {
-    const item = await Item.findById(req.params.itemId);
+    const item = await Item.findById(req.params.itemId || req.params.id);
+    const message = req.body.message?.trim();
 
     if (!item) {
       return res.status(404).json({
         success: false,
         message: "Item not found",
+      });
+    }
+
+    if (!message) {
+      return res.status(400).json({
+        success: false,
+        message: "A message to the owner is required",
       });
     }
 
@@ -71,7 +79,7 @@ const createRequest = async (req, res) => {
     const request = await Request.create({
       item: item._id,
       requester: req.user._id,
-      message: req.body.message,
+      message,
     });
 
     item.requestCount += 1;
@@ -89,6 +97,26 @@ const createRequest = async (req, res) => {
     res.status(201).json({
       success: true,
       request,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const getRequestStatus = async (req, res) => {
+  try {
+    const request = await Request.findOne({
+      item: req.params.id,
+      requester: req.user._id,
+    }).select("status");
+
+    res.status(200).json({
+      success: true,
+      hasRequested: Boolean(request),
+      status: request?.status || null,
     });
   } catch (error) {
     res.status(500).json({
@@ -270,6 +298,7 @@ const completeRequest = async (req, res) => {
 
 module.exports = {
   createRequest,
+  getRequestStatus,
   getMyRequests,
   getReceivedRequests,
   approveRequest,

@@ -93,7 +93,7 @@ const Register = () => {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-lg bg-white rounded-3xl shadow-xl border border-gray-100 p-8">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-extrabold text-teal-700">Needful</h1>
+          <h1 className="text-4xl font-extrabold text-primary-700">Needful</h1>
 
           <p className="text-gray-500 mt-2">Create your free account</p>
         </div>
@@ -111,7 +111,7 @@ const Register = () => {
               value={formData.name}
               onChange={handleChange}
               placeholder="Enter your full name"
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-600"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-600"
             />
           </div>
 
@@ -127,7 +127,7 @@ const Register = () => {
               value={formData.email}
               onChange={handleChange}
               placeholder="Enter your email"
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-600"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-600"
             />
           </div>
 
@@ -143,7 +143,7 @@ const Register = () => {
               value={formData.phone}
               onChange={handleChange}
               placeholder="08012345678"
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-600"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-600"
             />
           </div>
 
@@ -160,7 +160,7 @@ const Register = () => {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="Create a strong password"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-600 pr-12"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-600 pr-12"
               />
 
               <button
@@ -215,7 +215,7 @@ const Register = () => {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 placeholder="Confirm password"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-600 pr-12"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-600 pr-12"
               />
 
               <button
@@ -239,7 +239,7 @@ const Register = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-teal-700 hover:bg-teal-800 text-white font-semibold py-3 rounded-xl transition disabled:opacity-50"
+            className="w-full bg-primary-700 hover:bg-primary-800 text-white font-semibold py-3 rounded-xl transition disabled:opacity-50"
           >
             {loading ? "Creating Account..." : "Create Account"}
           </button>

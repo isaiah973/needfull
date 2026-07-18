@@ -37,7 +37,7 @@ const Navbar = () => {
           onClick={() => navigate("/")}
           className="flex items-center gap-2 cursor-pointer"
         >
-          <div className="h-10 w-10 rounded-2xl bg-teal-700 flex items-center justify-center text-white font-bold text-lg">
+          <div className="h-10 w-10 rounded-2xl bg-primary-700 flex items-center justify-center text-white font-bold text-lg">
             N
           </div>
 
@@ -77,7 +77,7 @@ const Navbar = () => {
                         navigate(`/?category=${encodeURIComponent(category)}`);
                         setCategoryOpen(false);
                       }}
-                      className="text-left rounded-lg px-3 py-2 hover:bg-teal-50 hover:text-teal-700 transition"
+                      className="text-left rounded-lg px-3 py-2 hover:bg-primary-50 hover:text-primary-700 transition"
                     >
                       {category}
                     </button>
@@ -88,7 +88,7 @@ const Navbar = () => {
                     navigate("/");
                     setCategoryOpen(false);
                   }}
-                  className="w-full border-t px-4 py-3 text-center font-medium text-teal-700 hover:bg-teal-50"
+                  className="w-full border-t px-4 py-3 text-center font-medium text-primary-700 hover:bg-primary-50"
                 >
                   View All Categories
                 </button>
@@ -100,7 +100,7 @@ const Navbar = () => {
             onClick={() =>
               navigate(isAuthenticated ? "/create-item" : "/login")
             }
-            className="flex items-center gap-2 bg-teal-700 hover:bg-teal-800 text-white px-5 py-3 rounded-full transition"
+            className="flex items-center gap-2 bg-primary-700 hover:bg-primary-800 text-white px-5 py-3 rounded-full transition"
           >
             <Plus size={18} />
             Post Item

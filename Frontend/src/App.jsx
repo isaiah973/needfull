@@ -2,6 +2,7 @@ import { Routes, Route } from "react-router-dom";
 
 import Home from "./pages/Home";
 import Login from "./pages/Login";
+import CreateItem from "./pages/CreateItem";
 import Register from "./pages/Register";
 import VerifyEmail from "./pages/VerifyEmail";
 
@@ -45,6 +46,7 @@ function App() {
           </GuestRoute>
         }
       />
+      <Route path="/create-item" element={<CreateItem />} />
     </Routes>
   );
 }

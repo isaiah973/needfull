@@ -61,7 +61,7 @@ const Login = () => {
             className="
                         text-4xl
                         font-extrabold
-                        text-teal-700
+                        text-primary-700
                     "
           >
             Needful
@@ -101,7 +101,7 @@ const Login = () => {
                                 border-gray-300
                                 outline-none
                                 focus:ring-2
-                                focus:ring-teal-600
+                                focus:ring-primary-600
                             "
             />
           </div>
@@ -138,7 +138,7 @@ const Login = () => {
                                     border-gray-300
                                     outline-none
                                     focus:ring-2
-                                    focus:ring-teal-600
+                                    focus:ring-primary-600
                                 "
               />
 
@@ -177,8 +177,8 @@ const Login = () => {
             disabled={loading}
             className="
                             w-full
-                            bg-teal-700
-                            hover:bg-teal-800
+                            bg-primary-700
+                            hover:bg-primary-800
                             text-white
                             py-3
                             rounded-xl

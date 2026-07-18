@@ -11,7 +11,10 @@ const {
   getMyItems,
 } = require("../controllers/itemController");
 
-const { createRequest } = require("../controllers/requestController");
+const {
+  createRequest,
+  getRequestStatus,
+} = require("../controllers/requestController");
 
 const { saveItem, removeSavedItem } = require("../controllers/userController");
 
@@ -29,6 +32,8 @@ router.get("/", getAllItems);
 router.post("/create", protect, upload.array("images", 5), createItem);
 
 router.post("/:id/view", recordView);
+
+router.get("/:id/request-status", protect, getRequestStatus);
 
 router.get("/:id", getSingleItem);
 

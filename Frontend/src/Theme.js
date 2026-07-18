@@ -9,8 +9,8 @@ const theme = {
     textSecondary: "#64748B",
 
     // Brand
-    primary: "#0F766E", // Teal 700
-    primaryHover: "#115E59",
+    primary: "#0ABAB5", // Tiffany Blue
+    primaryHover: "#089B98",
     primaryLight: "#CCFBF1",
 
     // Status
