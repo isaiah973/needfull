@@ -22,10 +22,26 @@ const app = express();
 
 connectDB();
 
+const normalizeOrigin = (value = "") => value.trim().replace(/\/+$/, "");
+const allowedOrigins = new Set([
+  "http://localhost:5173",
+  ...String(process.env.FRONTEND_URL || "")
+    .split(",")
+    .map(normalizeOrigin)
+    .filter(Boolean),
+]);
+
 // middleware first
 app.use(
   cors({
-    origin: ["http://localhost:5173", "https://your-frontend.vercel.app"],
+    origin(origin, callback) {
+      // Requests without an Origin header include server-to-server and health checks.
+      if (!origin || allowedOrigins.has(normalizeOrigin(origin))) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`Origin ${origin} is not allowed by CORS`));
+    },
     credentials: true,
   }),
 );

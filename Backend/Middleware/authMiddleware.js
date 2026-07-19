@@ -3,7 +3,11 @@ const User = require("../Models/userModel");
 
 const protect = async (req, res, next) => {
   try {
-    const token = req.cookies.token;
+    const authorization = req.headers.authorization;
+    const bearerToken = authorization?.startsWith("Bearer ")
+      ? authorization.slice(7).trim()
+      : "";
+    const token = req.cookies.token || bearerToken;
 
     if (!token) {
       return res.status(401).json({
