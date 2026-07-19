@@ -1,205 +1,747 @@
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import {
+  Bell,
+  CheckCheck,
+  ChevronDown,
+  ChevronRight,
+  CircleUserRound,
+  Grid2X2,
+  Home,
+  Inbox,
+  LayoutDashboard,
+  LogIn,
+  LogOut,
+  Menu,
+  Package,
+  Plus,
+  Search,
+  Settings,
+  User,
+  X,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-
-import { Bell, Moon, Menu, X, Search, User, Plus } from "lucide-react";
-
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { categories } from "../data/categories";
-const Navbar = () => {
-  const profileRef = useRef(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
-  const navigate = useNavigate();
-  const [categoryOpen, setCategoryOpen] = useState(false);
+import { useAuth } from "../context/AuthContext";
+import api from "../services/axios";
 
+const timeAgo = (createdAt) => {
+  const elapsed = Math.max(0, Date.now() - new Date(createdAt).getTime());
+  const minutes = Math.floor(elapsed / 60000);
+
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+
+  const days = Math.floor(hours / 24);
+  return days < 7
+    ? `${days}d ago`
+    : new Date(createdAt).toLocaleDateString("en-NG", {
+        day: "numeric",
+        month: "short",
+      });
+};
+
+const Navbar = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { user, logout, isAuthenticated } = useAuth();
-  const categoryRef = useRef(null);
+  const navRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const [openPanel, setOpenPanel] = useState("");
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [search, setSearch] = useState(searchParams.get("search") || "");
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] =
+    useState(isAuthenticated);
+
+  const currentUserId = user?._id || user?.id;
+  const unreadCount = notifications.filter(
+    (notification) => !notification.isRead,
+  ).length;
+  const isHome = location.pathname === "/";
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (categoryRef.current && !categoryRef.current.contains(event.target)) {
-        setCategoryOpen(false);
+    const closeOnOutsideClick = (event) => {
+      if (navRef.current && !navRef.current.contains(event.target)) {
+        setOpenPanel("");
+        setMobileOpen(false);
+        setMobileSearchOpen(false);
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") {
+        setOpenPanel("");
+        setMobileOpen(false);
+        setMobileSearchOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
     };
   }, []);
 
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    let ignore = false;
+
+    api
+      .get("/notifications")
+      .then(({ data }) => {
+        if (!ignore) setNotifications(data.notifications || []);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!ignore) setNotificationsLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [isAuthenticated]);
+
+  const togglePanel = (panel) => {
+    setOpenPanel((current) => (current === panel ? "" : panel));
+  };
+
+  const goTo = (path) => {
+    setOpenPanel("");
+    setMobileOpen(false);
+    navigate(path);
+  };
+
+  const handleSearch = (event) => {
+    event.preventDefault();
+    const query = search.trim();
+    const params = new URLSearchParams();
+
+    if (query) params.set("search", query);
+
+    navigate(params.size ? `/?${params.toString()}` : "/");
+    setMobileSearchOpen(false);
+  };
+
+  const chooseCategory = (category = "") => {
+    const params = new URLSearchParams();
+    if (category) params.set("category", category);
+
+    navigate(params.size ? `/?${params.toString()}` : "/");
+    setOpenPanel("");
+    setMobileOpen(false);
+  };
+
+  const openDashboardTab = (tab) => {
+    if (currentUserId) {
+      sessionStorage.setItem(`needful_dashboard_${currentUserId}_tab`, tab);
+    }
+    goTo("/profile");
+  };
+
+  const handleNotificationClick = async (notification) => {
+    if (!notification.isRead) {
+      api.patch(`/notifications/${notification._id}/read`).catch(() => {});
+      setNotifications((current) =>
+        current.map((entry) =>
+          entry._id === notification._id ? { ...entry, isRead: true } : entry,
+        ),
+      );
+    }
+
+    if (notification.item?._id) {
+      goTo(`/items/${notification.item._id}`);
+    } else {
+      openDashboardTab("received");
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      await api.patch("/notifications/read-all");
+      setNotifications((current) =>
+        current.map((notification) => ({ ...notification, isRead: true })),
+      );
+    } catch {
+      // Keep the existing state when the server action fails.
+    }
+  };
+
+  const handleLogout = async () => {
+    setOpenPanel("");
+    setMobileOpen(false);
+    await logout();
+    navigate("/");
+  };
+
   return (
-    <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200">
-      <div className="max-w-7xl mx-auto h-16 px-5 flex items-center justify-between">
-        {/* Logo */}
-        <div
-          onClick={() => navigate("/")}
-          className="flex items-center gap-2 cursor-pointer"
+    <nav
+      ref={navRef}
+      className="sticky top-0 z-50 border-b border-slate-200/90 bg-white/95 shadow-[0_1px_12px_rgba(15,23,42,0.04)] backdrop-blur-xl"
+    >
+      <div className="mx-auto flex h-[72px] max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
+        <button
+          type="button"
+          onClick={() => goTo("/")}
+          className="flex shrink-0 items-center gap-2.5 rounded-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary-100"
+          aria-label="Needful home"
         >
-          <div className="h-10 w-10 rounded-2xl bg-primary-700 flex items-center justify-center text-white font-bold text-lg">
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary-700 text-lg font-black text-white shadow-lg shadow-primary-700/20">
             N
-          </div>
+          </span>
+          <span className="hidden text-xl font-extrabold tracking-tight text-charcoal-900 sm:block">
+            Needful
+          </span>
+        </button>
 
-          <h1 className="text-2xl font-bold text-gray-800">Needful</h1>
-        </div>
-
-        {/* Search */}
-        <div className="hidden lg:flex items-center bg-slate-100 rounded-full px-4 py-3 w-[380px]">
-          <Search size={18} className="text-gray-500" />
-
-          <input
-            type="text"
-            placeholder="Search items..."
-            className="bg-transparent ml-3 w-full outline-none text-sm"
-          />
-        </div>
-
-        {/* Desktop Links */}
-
-        <div className="hidden md:flex items-center gap-3">
-          <button className="px-5 py-2 rounded-full text-gray-700 hover:bg-gray-100 transition">
+        <div className="ml-2 hidden items-center gap-1 lg:flex">
+          <button
+            type="button"
+            onClick={() => goTo("/")}
+            className={`rounded-xl px-3.5 py-2.5 text-sm font-bold transition ${
+              isHome && !searchParams.get("category")
+                ? "bg-primary-50 text-primary-800"
+                : "text-charcoal-600 hover:bg-charcoal-50 hover:text-charcoal-900"
+            }`}
+          >
             Home
           </button>
 
-          <div className="relative" ref={categoryRef}>
-            <button onClick={() => setCategoryOpen((prev) => !prev)}>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => togglePanel("categories")}
+              aria-expanded={openPanel === "categories"}
+              className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2.5 text-sm font-bold transition ${
+                openPanel === "categories" || searchParams.get("category")
+                  ? "bg-primary-50 text-primary-800"
+                  : "text-charcoal-600 hover:bg-charcoal-50 hover:text-charcoal-900"
+              }`}
+            >
               Categories
+              <ChevronDown
+                size={15}
+                className={`transition ${
+                  openPanel === "categories" ? "rotate-180" : ""
+                }`}
+              />
             </button>
 
-            {categoryOpen && (
-              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[600px] max-w-[90vw] rounded-2xl bg-white border border-gray-200 shadow-2xl p-6 z-50">
-                <div className="grid grid-cols-3 gap-3 ">
+            {openPanel === "categories" && (
+              <div className="absolute left-0 top-[calc(100%+14px)] w-[620px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_60px_rgba(15,23,42,0.16)]">
+                <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+                  <div>
+                    <p className="font-bold text-charcoal-900">
+                      Browse categories
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      Find useful items by type
+                    </p>
+                  </div>
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary-50 text-primary-700">
+                    <Grid2X2 size={18} />
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-1 p-3">
                   {categories.map((category) => (
                     <button
+                      type="button"
                       key={category}
-                      onClick={() => {
-                        navigate(`/?category=${encodeURIComponent(category)}`);
-                        setCategoryOpen(false);
-                      }}
-                      className="text-left rounded-lg px-3 py-2 hover:bg-primary-50 hover:text-primary-700 transition"
+                      onClick={() => chooseCategory(category)}
+                      className="rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-charcoal-600 transition hover:bg-primary-50 hover:text-primary-800"
                     >
                       {category}
                     </button>
                   ))}
                 </div>
                 <button
-                  onClick={() => {
-                    navigate("/");
-                    setCategoryOpen(false);
-                  }}
-                  className="w-full border-t px-4 py-3 text-center font-medium text-primary-700 hover:bg-primary-50"
+                  type="button"
+                  onClick={() => chooseCategory()}
+                  className="flex w-full items-center justify-center gap-2 border-t border-slate-100 px-5 py-3.5 text-sm font-bold text-primary-700 transition hover:bg-primary-50"
                 >
-                  View All Categories
+                  View all items
+                  <ChevronRight size={15} />
                 </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <form
+          onSubmit={handleSearch}
+          className="mx-auto hidden w-full max-w-md items-center rounded-xl border border-slate-200 bg-slate-50 px-3 transition focus-within:border-primary-400 focus-within:bg-white focus-within:ring-4 focus-within:ring-primary-100 md:flex"
+        >
+          <Search size={17} className="shrink-0 text-slate-400" />
+          <input
+            ref={searchInputRef}
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search free items..."
+            aria-label="Search items"
+            className="min-w-0 flex-1 bg-transparent px-2.5 py-3 text-sm text-charcoal-800 outline-none placeholder:text-slate-400"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-200 hover:text-charcoal-700"
+              aria-label="Clear search"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </form>
+
+        <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => {
+              setMobileSearchOpen((current) => !current);
+              setMobileOpen(false);
+            }}
+            className="grid h-10 w-10 place-items-center rounded-xl text-charcoal-600 transition hover:bg-charcoal-50 md:hidden"
+            aria-label="Search"
+            aria-expanded={mobileSearchOpen}
+          >
+            <Search size={19} />
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              goTo(isAuthenticated ? "/create-item" : "/login")
+            }
+            className="hidden items-center gap-2 rounded-xl bg-primary-700 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-primary-700/20 transition hover:bg-primary-800 sm:flex"
+          >
+            <Plus size={17} />
+            <span className="hidden xl:inline">Post item</span>
+            <span className="xl:hidden">Post</span>
+          </button>
+
+          {isAuthenticated && (
+            <div className="relative hidden sm:block">
+              <button
+                type="button"
+                onClick={() => togglePanel("notifications")}
+                aria-label="Notifications"
+                aria-expanded={openPanel === "notifications"}
+                className={`relative grid h-10 w-10 place-items-center rounded-xl transition ${
+                  openPanel === "notifications"
+                    ? "bg-primary-50 text-primary-800"
+                    : "text-charcoal-600 hover:bg-charcoal-50"
+                }`}
+              >
+                <Bell size={19} />
+                {unreadCount > 0 && (
+                  <span className="absolute right-1.5 top-1.5 min-w-4 rounded-full bg-primary-600 px-1 text-center text-[9px] font-black leading-4 text-white ring-2 ring-white">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {openPanel === "notifications" && (
+                <div className="absolute right-0 top-[calc(100%+14px)] w-[360px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_60px_rgba(15,23,42,0.16)]">
+                  <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+                    <div>
+                      <p className="font-bold text-charcoal-900">
+                        Notifications
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {unreadCount
+                          ? `${unreadCount} unread update${unreadCount === 1 ? "" : "s"}`
+                          : "You are all caught up"}
+                      </p>
+                    </div>
+                    {unreadCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={markAllAsRead}
+                        className="flex items-center gap-1.5 text-xs font-bold text-primary-700 hover:text-primary-900"
+                      >
+                        <CheckCheck size={15} />
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-[380px] overflow-y-auto">
+                    {notificationsLoading ? (
+                      <div className="space-y-3 p-4">
+                        {[1, 2, 3].map((entry) => (
+                          <div
+                            key={entry}
+                            className="h-16 animate-pulse rounded-xl bg-slate-100"
+                          />
+                        ))}
+                      </div>
+                    ) : notifications.length === 0 ? (
+                      <div className="px-6 py-12 text-center">
+                        <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-charcoal-50 text-charcoal-400">
+                          <Bell size={21} />
+                        </span>
+                        <p className="mt-4 text-sm font-bold text-charcoal-800">
+                          No notifications yet
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Requests and account updates will appear here.
+                        </p>
+                      </div>
+                    ) : (
+                      notifications.slice(0, 12).map((notification) => (
+                        <button
+                          type="button"
+                          key={notification._id}
+                          onClick={() =>
+                            handleNotificationClick(notification)
+                          }
+                          className={`flex w-full gap-3 border-b border-slate-100 px-4 py-3.5 text-left transition last:border-b-0 hover:bg-charcoal-50 ${
+                            notification.isRead ? "bg-white" : "bg-primary-50/60"
+                          }`}
+                        >
+                          <span
+                            className={`mt-1 h-2 w-2 shrink-0 rounded-full ${
+                              notification.isRead
+                                ? "bg-charcoal-200"
+                                : "bg-primary-500"
+                            }`}
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="line-clamp-2 text-xs font-semibold leading-5 text-charcoal-700">
+                              {notification.message}
+                            </span>
+                            <span className="mt-1 block text-[10px] font-medium text-slate-400">
+                              {timeAgo(notification.createdAt)}
+                            </span>
+                          </span>
+                          <ChevronRight
+                            size={15}
+                            className="mt-1 shrink-0 text-slate-300"
+                          />
+                        </button>
+                      ))
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => openDashboardTab("received")}
+                    className="flex w-full items-center justify-center gap-2 border-t border-slate-100 px-5 py-3.5 text-sm font-bold text-primary-700 hover:bg-primary-50"
+                  >
+                    Open request dashboard
+                    <ChevronRight size={15} />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="relative hidden sm:block">
+            {isAuthenticated ? (
+              <button
+                type="button"
+                onClick={() => togglePanel("profile")}
+                aria-expanded={openPanel === "profile"}
+                className={`flex items-center gap-2 rounded-xl p-1.5 pr-2 transition ${
+                  openPanel === "profile"
+                    ? "bg-primary-50"
+                    : "hover:bg-charcoal-50"
+                }`}
+              >
+                <span className="grid h-8 w-8 place-items-center overflow-hidden rounded-lg bg-primary-100 text-xs font-bold text-primary-800">
+                  {user?.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    user?.name?.charAt(0)?.toUpperCase() || <User size={16} />
+                  )}
+                </span>
+                <ChevronDown
+                  size={14}
+                  className={`text-charcoal-500 transition ${
+                    openPanel === "profile" ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => goTo("/login")}
+                className="flex items-center gap-2 rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-charcoal-700 transition hover:border-primary-300 hover:bg-primary-50 hover:text-primary-800"
+              >
+                <LogIn size={17} />
+                Sign in
+              </button>
+            )}
+
+            {isAuthenticated && openPanel === "profile" && (
+              <div className="absolute right-0 top-[calc(100%+14px)] w-72 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_60px_rgba(15,23,42,0.16)]">
+                <div className="flex items-center gap-3 border-b border-slate-100 bg-charcoal-50/70 px-4 py-4">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-primary-100 font-bold text-primary-800">
+                    {user?.avatar ? (
+                      <img
+                        src={user.avatar}
+                        alt={user.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      user?.name?.charAt(0)?.toUpperCase()
+                    )}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-bold text-charcoal-900">
+                      {user?.name}
+                    </span>
+                    <span className="mt-0.5 block truncate text-xs text-slate-500">
+                      {user?.email}
+                    </span>
+                  </span>
+                </div>
+
+                <div className="p-2">
+                  <button
+                    type="button"
+                    onClick={() => openDashboardTab("profile")}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-charcoal-700 transition hover:bg-primary-50 hover:text-primary-800"
+                  >
+                    <CircleUserRound size={17} />
+                    Profile settings
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openDashboardTab("items")}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-charcoal-700 transition hover:bg-primary-50 hover:text-primary-800"
+                  >
+                    <Package size={17} />
+                    My items
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openDashboardTab("received")}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-charcoal-700 transition hover:bg-primary-50 hover:text-primary-800"
+                  >
+                    <Inbox size={17} />
+                    Interested users
+                    {unreadCount > 0 && (
+                      <span className="ml-auto rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-bold text-primary-800">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openDashboardTab("requested")}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-charcoal-700 transition hover:bg-primary-50 hover:text-primary-800"
+                  >
+                    <LayoutDashboard size={17} />
+                    My requests
+                  </button>
+                </div>
+
+                <div className="border-t border-slate-100 p-2">
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-charcoal-700 transition hover:bg-charcoal-100 hover:text-charcoal-950"
+                  >
+                    <LogOut size={17} />
+                    Sign out
+                  </button>
+                </div>
               </div>
             )}
           </div>
 
           <button
-            onClick={() =>
-              navigate(isAuthenticated ? "/create-item" : "/login")
-            }
-            className="flex items-center gap-2 bg-primary-700 hover:bg-primary-800 text-white px-5 py-3 rounded-full transition"
+            type="button"
+            onClick={() => {
+              setMobileOpen((current) => !current);
+              setMobileSearchOpen(false);
+            }}
+            className={`grid h-10 w-10 place-items-center rounded-xl transition sm:hidden ${
+              mobileOpen
+                ? "bg-charcoal-900 text-white"
+                : "text-charcoal-700 hover:bg-charcoal-50"
+            }`}
+            aria-label="Open navigation menu"
+            aria-expanded={mobileOpen}
           >
-            <Plus size={18} />
-            Post Item
+            {mobileOpen ? <X size={20} /> : <Menu size={21} />}
           </button>
-
-          <button className="h-11 w-11 rounded-full hover:bg-gray-100 flex items-center justify-center">
-            <Bell size={20} />
-          </button>
-
-          <button className="h-11 w-11 rounded-full hover:bg-gray-100 flex items-center justify-center">
-            <Moon size={20} />
-          </button>
-
-          {isAuthenticated ? (
-            <div className="relative" ref={profileRef}>
-              <button
-                onClick={() => setProfileOpen((prev) => !prev)}
-                className="h-11 w-11 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden hover:bg-gray-200 transition"
-              >
-                {user?.avatar ? (
-                  <img
-                    src={user.avatar}
-                    alt={user.name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <User size={20} />
-                )}
-              </button>
-
-              {profileOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
-                  <div className="px-4 py-3 border-b">
-                    <p className="font-semibold text-gray-800">{user?.name}</p>
-                    <p className="text-sm text-gray-500 truncate">
-                      {user?.email}
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setProfileOpen(false);
-                      navigate("/profile");
-                    }}
-                    className="w-full text-left px-4 py-3 hover:bg-gray-100 transition"
-                  >
-                    Profile
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setProfileOpen(false);
-                      logout();
-                    }}
-                    className="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 transition"
-                  >
-                    Logout
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <button
-              onClick={() => navigate("/login")}
-              className="h-11 w-11 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition"
-            >
-              <User size={20} />
-            </button>
-          )}
         </div>
-        {/* Mobile */}
-
-        <button
-          onClick={() => setMenuOpen(!menuOpen)}
-          className="md:hidden h-11 w-11 rounded-full hover:bg-gray-100 flex items-center justify-center"
-        >
-          {menuOpen ? <X /> : <Menu />}
-        </button>
       </div>
 
-      {/* Mobile Menu */}
+      {mobileSearchOpen && (
+        <form
+          onSubmit={handleSearch}
+          className="border-t border-slate-100 bg-white px-4 py-3 md:hidden"
+        >
+          <div className="flex items-center rounded-xl border border-primary-300 bg-white px-3 ring-4 ring-primary-50">
+            <Search size={17} className="text-primary-700" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              autoFocus
+              placeholder="Search free items..."
+              className="min-w-0 flex-1 bg-transparent px-2.5 py-3 text-sm outline-none"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="text-slate-400"
+                aria-label="Clear search"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+        </form>
+      )}
 
-      {menuOpen && (
-        <div className="md:hidden border-t border-gray-200 bg-white">
-          <div className="p-5 space-y-4">
-            <button className="block w-full text-left">Home</button>
+      {mobileOpen && (
+        <div className="border-t border-slate-100 bg-white shadow-xl sm:hidden">
+          <div className="max-h-[calc(100vh-72px)] overflow-y-auto px-4 py-4">
+            {isAuthenticated && (
+              <div className="mb-4 flex items-center gap-3 rounded-2xl bg-charcoal-50 p-3">
+                <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-primary-100 font-bold text-primary-800">
+                  {user?.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    user?.name?.charAt(0)?.toUpperCase()
+                  )}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-bold text-charcoal-900">
+                    {user?.name}
+                  </span>
+                  <span className="block truncate text-xs text-slate-500">
+                    {user?.email}
+                  </span>
+                </span>
+              </div>
+            )}
 
-            <button className="block w-full text-left">Categories</button>
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={() => goTo("/")}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold text-charcoal-700 hover:bg-primary-50 hover:text-primary-800"
+              >
+                <Home size={18} />
+                Home
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setMobileCategoriesOpen((current) => !current)
+                }
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold text-charcoal-700 hover:bg-primary-50 hover:text-primary-800"
+              >
+                <Grid2X2 size={18} />
+                Categories
+                <ChevronDown
+                  size={16}
+                  className={`ml-auto transition ${
+                    mobileCategoriesOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
 
-            <button className="block w-full text-left">Post Item</button>
+              {mobileCategoriesOpen && (
+                <div className="grid grid-cols-2 gap-1 rounded-xl bg-charcoal-50 p-2">
+                  {categories.map((category) => (
+                    <button
+                      type="button"
+                      key={category}
+                      onClick={() => chooseCategory(category)}
+                      className="rounded-lg px-2.5 py-2 text-left text-[11px] font-semibold text-charcoal-600 hover:bg-white hover:text-primary-800"
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+              )}
 
-            <button className="block w-full text-left">Notifications</button>
+              <button
+                type="button"
+                onClick={() =>
+                  goTo(isAuthenticated ? "/create-item" : "/login")
+                }
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold text-charcoal-700 hover:bg-primary-50 hover:text-primary-800"
+              >
+                <Plus size={18} />
+                Post an item
+              </button>
 
-            <button
-              onClick={() => navigate(isAuthenticated ? "/profile" : "/login")}
-              className="block w-full text-left"
-            >
-              {isAuthenticated ? "Profile" : "Login"}
-            </button>
+              {isAuthenticated ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => openDashboardTab("profile")}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold text-charcoal-700 hover:bg-primary-50 hover:text-primary-800"
+                  >
+                    <Settings size={18} />
+                    Profile settings
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openDashboardTab("items")}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold text-charcoal-700 hover:bg-primary-50 hover:text-primary-800"
+                  >
+                    <Package size={18} />
+                    My items
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openDashboardTab("received")}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold text-charcoal-700 hover:bg-primary-50 hover:text-primary-800"
+                  >
+                    <Bell size={18} />
+                    Notifications
+                    {unreadCount > 0 && (
+                      <span className="ml-auto rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-bold text-primary-800">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="mt-2 flex w-full items-center gap-3 rounded-xl border-t border-slate-100 px-3 py-3 text-sm font-bold text-charcoal-700 hover:bg-charcoal-100"
+                  >
+                    <LogOut size={18} />
+                    Sign out
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => goTo("/login")}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-primary-700 px-4 py-3 text-sm font-bold text-white"
+                >
+                  <LogIn size={18} />
+                  Sign in to Needful
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

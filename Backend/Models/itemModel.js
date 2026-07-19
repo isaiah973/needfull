@@ -1,6 +1,10 @@
 const mongoose = require("mongoose");
 const categories = require("../constants/categories");
 
+const MAX_DESCRIPTION_WORDS = 150;
+const countWords = (value = "") =>
+  value.trim() ? value.trim().split(/\s+/).length : 0;
+
 const itemSchema = new mongoose.Schema(
   {
     title: {
@@ -13,6 +17,11 @@ const itemSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      maxlength: [1000, "Description cannot exceed 1,000 characters"],
+      validate: {
+        validator: (value) => countWords(value) <= MAX_DESCRIPTION_WORDS,
+        message: `Description cannot exceed ${MAX_DESCRIPTION_WORDS} words`,
+      },
     },
 
     images: {

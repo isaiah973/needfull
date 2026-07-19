@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useState } from "react";
 import {
   loginUser,
   registerUser,
@@ -100,7 +100,9 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await logoutUser();
-    } catch (error) {}
+    } catch {
+      // Clear local authentication even if the server session already expired.
+    }
 
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -109,16 +111,10 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
   };
 
-  // Keep user logged in after refresh
-  useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    const savedToken = localStorage.getItem("token");
-
-    if (savedUser && savedToken) {
-      setUser(JSON.parse(savedUser));
-      setToken(savedToken);
-    }
-  }, []);
+  const updateUser = (nextUser) => {
+    localStorage.setItem("user", JSON.stringify(nextUser));
+    setUser(nextUser);
+  };
 
   return (
     <AuthContext.Provider
@@ -130,6 +126,7 @@ export const AuthProvider = ({ children }) => {
         register,
         verify,
         logout,
+        updateUser,
         isAuthenticated: !!token,
       }}
     >
@@ -138,4 +135,5 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);

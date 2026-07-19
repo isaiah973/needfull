@@ -2,8 +2,11 @@ import {
   ArrowLeft,
   CalendarDays,
   Check,
+  ChevronDown,
   ChevronRight,
+  ChevronUp,
   Eye,
+  Flag,
   Heart,
   ImageOff,
   MapPin,
@@ -17,7 +20,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../services/axios";
@@ -47,12 +50,20 @@ const ItemDetails = () => {
   const [hasRequested, setHasRequested] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportDescription, setReportDescription] = useState("");
+  const [reportError, setReportError] = useState("");
+  const [reporting, setReporting] = useState(false);
+  const [hasReported, setHasReported] = useState(false);
+  const [expandedDescriptionId, setExpandedDescriptionId] = useState(null);
   const ownerId =
     typeof item?.owner === "object" ? item.owner?._id : item?.owner;
   const currentUserId = user?._id || user?.id;
   const isOwner = Boolean(
     ownerId && currentUserId && String(ownerId) === String(currentUserId),
   );
+  const descriptionExpanded = expandedDescriptionId === id;
 
   useEffect(() => {
     let ignore = false;
@@ -108,6 +119,23 @@ const ItemDetails = () => {
       ignore = true;
     };
   }, [id, isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated || isOwner) return;
+
+    let ignore = false;
+
+    api
+      .get(`/reports/item/${id}/status`)
+      .then(({ data }) => {
+        if (!ignore) setHasReported(Boolean(data.hasReported));
+      })
+      .catch(() => {});
+
+    return () => {
+      ignore = true;
+    };
+  }, [id, isAuthenticated, isOwner]);
 
   const requireAccount = () => {
     if (isAuthenticated) return true;
@@ -201,6 +229,56 @@ const ItemDetails = () => {
     }
   };
 
+  const openReportDialog = () => {
+    if (!requireAccount()) return;
+    if (isOwner) return;
+
+    if (hasReported) {
+      toast("Your report is already being reviewed");
+      return;
+    }
+
+    setReportError("");
+    setReportDialogOpen(true);
+  };
+
+  const handleReport = async (event) => {
+    event.preventDefault();
+
+    if (!reportReason) {
+      setReportError("Please select a reason for reporting this item.");
+      return;
+    }
+
+    try {
+      setReporting(true);
+      setReportError("");
+
+      const { data } = await api.post(`/reports/${id}`, {
+        reason: reportReason,
+        description: reportDescription.trim(),
+      });
+
+      setHasReported(true);
+      setReportDialogOpen(false);
+      setReportReason("");
+      setReportDescription("");
+      toast.success(data.message || "Report submitted for review");
+    } catch (err) {
+      const message =
+        err.response?.data?.message || "Could not submit your report";
+
+      if (message.toLowerCase().includes("already reported")) {
+        setHasReported(true);
+        setReportDialogOpen(false);
+      }
+
+      toast.error(message);
+    } finally {
+      setReporting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50">
@@ -226,7 +304,7 @@ const ItemDetails = () => {
       <div className="min-h-screen bg-slate-50">
         <Navbar />
         <main className="mx-auto flex max-w-xl flex-col items-center px-6 py-28 text-center">
-          <div className="grid h-16 w-16 place-items-center rounded-2xl bg-red-100 text-red-600">
+          <div className="grid h-16 w-16 place-items-center rounded-2xl bg-charcoal-100 text-charcoal-700">
             <ImageOff size={28} />
           </div>
           <h1 className="mt-6 text-2xl font-bold text-slate-900">
@@ -292,7 +370,7 @@ const ItemDetails = () => {
                     : "bg-slate-900/85 text-white"
                 }`}
               >
-                <span className="h-2 w-2 rounded-full bg-yellow-300" />
+                <span className="h-2 w-2 rounded-full bg-primary-300" />
                 {item.status || "available"}
               </span>
             </div>
@@ -327,7 +405,7 @@ const ItemDetails = () => {
               <span className="rounded-full bg-primary-50 px-3.5 py-2 text-xs font-bold text-primary-700 ring-1 ring-primary-100">
                 {item.category || "Other"}
               </span>
-              <span className="rounded-full bg-yellow-100 px-3.5 py-2 text-xs font-bold capitalize text-yellow-800 ring-1 ring-yellow-200">
+              <span className="rounded-full bg-charcoal-100 px-3.5 py-2 text-xs font-bold capitalize text-charcoal-800 ring-1 ring-charcoal-200">
                 {item.condition || "Good"} condition
               </span>
             </div>
@@ -336,13 +414,41 @@ const ItemDetails = () => {
               {item.title}
             </h1>
 
-            <p className="mt-5 whitespace-pre-line text-[15px] leading-7 text-slate-600">
-              {item.description}
-            </p>
+            <div className="mt-5">
+              <p
+                className={`whitespace-pre-line text-[15px] leading-7 text-slate-600 ${
+                  descriptionExpanded ? "" : "line-clamp-4"
+                }`}
+              >
+                {item.description}
+              </p>
+              {item.description?.length > 160 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedDescriptionId((current) =>
+                      current === id ? null : id,
+                    )
+                  }
+                  className="mt-2 inline-flex items-center gap-1.5 text-sm font-bold text-primary-700 transition hover:text-primary-900"
+                  aria-expanded={descriptionExpanded}
+                >
+                  {descriptionExpanded ? (
+                    <>
+                      Show less <ChevronUp size={16} />
+                    </>
+                  ) : (
+                    <>
+                      Read full description <ChevronDown size={16} />
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
 
             <div className="mt-7 grid grid-cols-2 gap-3">
-              <div className="rounded-2xl bg-red-50 p-4">
-                <MapPin size={19} className="text-red-500" />
+              <div className="rounded-2xl bg-charcoal-50 p-4">
+                <MapPin size={19} className="text-charcoal-600" />
                 <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                   Location
                 </p>
@@ -350,8 +456,8 @@ const ItemDetails = () => {
                   {item.location}
                 </p>
               </div>
-              <div className="rounded-2xl bg-blue-50 p-4">
-                <Eye size={19} className="text-blue-500" />
+              <div className="rounded-2xl bg-primary-50 p-4">
+                <Eye size={19} className="text-primary-600" />
                 <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                   Views
                 </p>
@@ -359,8 +465,8 @@ const ItemDetails = () => {
                   {item.views ?? 0} views
                 </p>
               </div>
-              <div className="rounded-2xl bg-yellow-50 p-4">
-                <CalendarDays size={19} className="text-yellow-600" />
+              <div className="rounded-2xl bg-charcoal-100 p-4">
+                <CalendarDays size={19} className="text-charcoal-700" />
                 <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                   Posted
                 </p>
@@ -403,8 +509,8 @@ const ItemDetails = () => {
                   aria-label="Save item"
                   className={`inline-flex flex-1 items-center justify-center gap-2 rounded-xl border px-4 py-3.5 text-sm font-bold transition sm:flex-none ${
                     saved
-                      ? "border-red-200 bg-red-50 text-red-600"
-                      : "border-slate-200 text-slate-700 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                      ? "border-charcoal-300 bg-charcoal-100 text-charcoal-900"
+                      : "border-slate-200 text-slate-700 hover:border-charcoal-300 hover:bg-charcoal-50 hover:text-charcoal-900"
                   }`}
                 >
                   {saved ? <Check size={18} /> : <Heart size={18} />}
@@ -414,7 +520,7 @@ const ItemDetails = () => {
                   type="button"
                   onClick={handleShare}
                   aria-label="Share item"
-                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3.5 text-sm font-bold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600 sm:flex-none"
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3.5 text-sm font-bold text-slate-700 transition hover:border-charcoal-300 hover:bg-charcoal-50 hover:text-charcoal-900 sm:flex-none"
                 >
                   <Share2 size={18} />
                   Share
@@ -422,8 +528,12 @@ const ItemDetails = () => {
               </div>
             </div>
 
-            <div className="mt-7 flex items-center gap-4 border-t border-slate-100 pt-6">
-              <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full bg-yellow-300 font-bold text-yellow-950 ring-4 ring-yellow-50">
+            <Link
+              to={isOwner ? "/profile" : `/users/${ownerId}`}
+              className="group/owner mt-7 flex items-center gap-4 border-t border-slate-100 pt-6 outline-none"
+              aria-label={`View ${ownerName}'s profile`}
+            >
+              <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full bg-charcoal-800 font-bold text-white ring-4 ring-charcoal-100">
                 {item.owner?.avatar ? (
                   <img
                     src={item.owner.avatar}
@@ -438,13 +548,31 @@ const ItemDetails = () => {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-slate-400">Shared by</p>
-                <p className="truncate font-bold text-slate-800">{ownerName}</p>
+                <p className="truncate font-bold text-slate-800 transition group-hover/owner:text-primary-700 group-focus-visible/owner:text-primary-700">
+                  {ownerName}
+                </p>
               </div>
-              <div className="flex items-center gap-1.5 rounded-full bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-700">
+              <div className="flex items-center gap-1.5 rounded-full bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-700 transition group-hover/owner:bg-primary-100">
                 <ShieldCheck size={15} />
-                Member
+                View profile
               </div>
-            </div>
+            </Link>
+
+            {!isOwner && (
+              <div className="mt-6 border-t border-slate-100 pt-5 text-center">
+                <button
+                  type="button"
+                  onClick={openReportDialog}
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-charcoal-900"
+                >
+                  <Flag size={16} />
+                  {hasReported ? "Report submitted" : "Report this item"}
+                </button>
+                <p className="mt-1.5 text-xs text-slate-400">
+                  Help keep the Needful community safe.
+                </p>
+              </div>
+            )}
           </section>
         </div>
       </main>
@@ -514,7 +642,7 @@ const ItemDetails = () => {
               className="mt-5 block text-sm font-bold text-slate-800"
             >
               Why do you need this item?{" "}
-              <span className="text-red-500">*</span>
+              <span className="text-charcoal-700">*</span>
             </label>
             <textarea
               id="request-message"
@@ -532,7 +660,7 @@ const ItemDetails = () => {
               aria-describedby={messageError ? "request-message-error" : undefined}
               className={`mt-2 w-full resize-none rounded-2xl border bg-white px-4 py-3 text-sm leading-6 text-slate-800 outline-none transition placeholder:text-slate-400 focus:ring-4 ${
                 messageError
-                  ? "border-red-400 focus:border-red-500 focus:ring-red-100"
+                  ? "border-charcoal-500 focus:border-charcoal-700 focus:ring-charcoal-100"
                   : "border-slate-200 focus:border-primary-500 focus:ring-primary-100"
               }`}
             />
@@ -540,7 +668,7 @@ const ItemDetails = () => {
             <div className="mt-1.5 flex min-h-5 items-center justify-between gap-3">
               <p
                 id="request-message-error"
-                className="text-xs font-medium text-red-600"
+                className="text-xs font-medium text-charcoal-700"
               >
                 {messageError}
               </p>
@@ -561,6 +689,116 @@ const ItemDetails = () => {
             <p className="mt-3 text-center text-xs leading-5 text-slate-400">
               Your message will be shared privately with the item owner.
             </p>
+          </form>
+        </div>
+      )}
+
+      {reportDialogOpen && !isOwner && (
+        <div
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/55 p-0 backdrop-blur-sm sm:items-center sm:p-5"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !reporting) {
+              setReportDialogOpen(false);
+            }
+          }}
+        >
+          <form
+            onSubmit={handleReport}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="report-dialog-title"
+            className="w-full rounded-t-3xl bg-white p-6 shadow-2xl sm:max-w-lg sm:rounded-3xl sm:p-7"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-charcoal-600">
+                  Community safety
+                </p>
+                <h2
+                  id="report-dialog-title"
+                  className="mt-1 text-2xl font-bold text-slate-900"
+                >
+                  Report this item
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Tell us what seems wrong. Your report is private and will be
+                  reviewed by the Needful team.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReportDialogOpen(false)}
+                disabled={reporting}
+                aria-label="Close report dialog"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-800"
+              >
+                <X size={19} />
+              </button>
+            </div>
+
+            <label
+              htmlFor="report-reason"
+              className="mt-6 block text-sm font-bold text-slate-800"
+            >
+              Reason <span className="text-charcoal-700">*</span>
+            </label>
+            <select
+              id="report-reason"
+              value={reportReason}
+              onChange={(event) => {
+                setReportReason(event.target.value);
+                if (reportError) setReportError("");
+              }}
+              required
+              autoFocus
+              className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+            >
+              <option value="">Select a reason</option>
+              <option value="scam">Possible scam</option>
+              <option value="fake">Fake or misleading item</option>
+              <option value="spam">Spam</option>
+              <option value="offensive">Offensive content</option>
+              <option value="harassment">Harassment</option>
+              <option value="duplicate">Duplicate listing</option>
+              <option value="wrong-category">Wrong category</option>
+              <option value="other">Something else</option>
+            </select>
+
+            <label
+              htmlFor="report-description"
+              className="mt-5 block text-sm font-bold text-slate-800"
+            >
+              Additional details{" "}
+              <span className="font-normal text-slate-400">(optional)</span>
+            </label>
+            <textarea
+              id="report-description"
+              value={reportDescription}
+              onChange={(event) => setReportDescription(event.target.value)}
+              maxLength={500}
+              rows={4}
+              placeholder="Add any useful context for the review team..."
+              className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+            />
+
+            <div className="mt-1.5 flex min-h-5 items-center justify-between gap-3">
+              <p className="text-xs font-medium text-charcoal-700">
+                {reportError}
+              </p>
+              <span className="shrink-0 text-xs text-slate-400">
+                {reportDescription.length}/500
+              </span>
+            </div>
+
+            <button
+              type="submit"
+              disabled={reporting || !reportReason}
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-charcoal-900 px-6 py-3.5 text-sm font-bold text-white transition hover:bg-charcoal-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+            >
+              <Flag size={17} />
+              {reporting ? "Submitting report..." : "Submit report"}
+            </button>
           </form>
         </div>
       )}

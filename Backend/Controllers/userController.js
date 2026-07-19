@@ -1,31 +1,38 @@
 const User = require("../Models/userModel");
+const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const generateVerificationCode = require("../utils/generateVerificationCode");
 const generateTokenAndSetCookie = require("../utils/generateTokenAndSetCookie");
 const Item = require("../Models/itemModel");
+const Request = require("../Models/requestModel");
+const Notification = require("../Models/notificationModel");
+const uploadToCloudinary = require("../utils/uploadToCloudinary");
 const {
   sendVerificationEmail,
   sendResetPasswordEmail,
+  sendPasswordChangedEmail,
+  sendEmailChangedNotifications,
 } = require("../utils/sendEmail");
+
+const strongPasswordRegex =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.#_-])[A-Za-z\d@$!%*?&.#_-]{8,}$/;
 
 // REGISTER
 
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password, phone } = req.body;
+    const { name, password, phone, state } = req.body;
+    const email = req.body.email?.trim().toLowerCase();
 
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !state) {
       return res.status(400).json({
         success: false,
-        message: "Name, email and password are required",
+        message: "Name, email, password and state are required",
       });
     }
 
     // Strong password validation
-    const passwordRegex =
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.#_-])[A-Za-z\d@$!%*?&.#_-]{8,}$/;
-
-    if (!passwordRegex.test(password)) {
+    if (!strongPasswordRegex.test(password)) {
       return res.status(400).json({
         success: false,
         message:
@@ -35,11 +42,18 @@ const registerUser = async (req, res) => {
 
     const existingUser = await User.findOne({ email });
 
-    if (existingUser) {
+    if (existingUser && !existingUser.isDeleted) {
       return res.status(400).json({
         success: false,
         message: "User already exists",
       });
+    }
+
+    // Older deleted accounts may still hold their original email. Release it
+    // without restoring any of the old account's data or relationships.
+    if (existingUser?.isDeleted) {
+      existingUser.email = `deleted-${existingUser._id}-${Date.now()}@deleted.needful.invalid`;
+      await existingUser.save();
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -50,6 +64,7 @@ const registerUser = async (req, res) => {
       email,
       password: hashedPassword,
       phone,
+      state,
       verificationCode,
       verificationCodeExpires: new Date(Date.now() + 10 * 60 * 1000),
       isVerified: false,
@@ -64,6 +79,7 @@ const registerUser = async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
+        state: user.state,
         isVerified: user.isVerified,
       },
     });
@@ -192,6 +208,9 @@ const verifyEmail = async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
+        phone: user.phone,
+        state: user.state,
+        avatar: user.avatar,
         role: user.role,
         isVerified: user.isVerified,
       },
@@ -211,18 +230,94 @@ const getProfile = async (req, res) => {
   });
 };
 
+const getPublicProfile = async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const user = await User.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    }).select("name avatar state createdAt");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const items = await Item.find({
+      owner: user._id,
+      moderationStatus: "approved",
+      isActive: true,
+    })
+      .populate("owner", "name avatar")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      user,
+      items,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 const updateProfile = async (req, res) => {
   try {
     const user = req.user;
+    const name = req.body.name?.trim();
+    const phone = req.body.phone?.trim();
+    const state = req.body.state?.trim();
 
-    user.name = req.body.name || user.name;
-    user.phone = req.body.phone || user.phone;
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: "Name is required",
+      });
+    }
+
+    if (!state) {
+      return res.status(400).json({
+        success: false,
+        message: "State is required",
+      });
+    }
+
+    user.name = name;
+    user.phone = phone ?? user.phone;
+    user.state = state;
+
+    if (req.file) {
+      const uploadedAvatar = await uploadToCloudinary(req.file.buffer);
+      user.avatar = uploadedAvatar.secure_url;
+    }
 
     await user.save();
 
     res.status(200).json({
       success: true,
-      user,
+      message: "Profile updated successfully",
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        state: user.state,
+        avatar: user.avatar,
+        role: user.role,
+        isVerified: user.isVerified,
+        createdAt: user.createdAt,
+      },
     });
   } catch (error) {
     res.status(500).json({
@@ -300,6 +395,9 @@ const loginUser = async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
+        phone: user.phone,
+        state: user.state,
+        avatar: user.avatar,
         role: user.role,
         isVerified: user.isVerified,
       },
@@ -402,6 +500,13 @@ const forgotPassword = async (req, res) => {
       });
     }
 
+    if (user.isDeleted) {
+      return res.status(410).json({
+        success: false,
+        message: "This account has been permanently deleted",
+      });
+    }
+
     const resetToken = generateVerificationCode();
 
     user.resetPasswordToken = resetToken;
@@ -426,12 +531,21 @@ const forgotPassword = async (req, res) => {
 // RESET PASSWORD
 const resetPassword = async (req, res) => {
   try {
-    const { email, token, newPassword } = req.body;
+    const email = req.body.email?.trim().toLowerCase();
+    const { token, newPassword } = req.body;
 
     if (!email || !token || !newPassword) {
       return res.status(400).json({
         success: false,
         message: "Email, token and new password are required",
+      });
+    }
+
+    if (!strongPasswordRegex.test(newPassword)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Password must be at least 8 characters and include uppercase, lowercase, number, and special character.",
       });
     }
 
@@ -441,6 +555,13 @@ const resetPassword = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "User not found",
+      });
+    }
+
+    if (user.isDeleted) {
+      return res.status(410).json({
+        success: false,
+        message: "This account has been permanently deleted",
       });
     }
 
@@ -478,25 +599,237 @@ const resetPassword = async (req, res) => {
   }
 };
 
+const changeEmail = async (req, res) => {
+  try {
+    const newEmail = req.body.newEmail?.trim().toLowerCase();
+    const currentPassword = req.body.currentPassword;
+
+    if (!newEmail || !currentPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New email and current password are required",
+      });
+    }
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(newEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: "Enter a valid email address",
+      });
+    }
+
+    const user = await User.findById(req.user._id);
+    const passwordMatches = await bcrypt.compare(
+      currentPassword,
+      user.password,
+    );
+
+    if (!passwordMatches) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password is incorrect",
+      });
+    }
+
+    if (newEmail === user.email) {
+      return res.status(400).json({
+        success: false,
+        message: "This is already your email address",
+      });
+    }
+
+    const emailInUse = await User.exists({
+      email: newEmail,
+      _id: { $ne: user._id },
+    });
+
+    if (emailInUse) {
+      return res.status(409).json({
+        success: false,
+        message: "An account already uses this email address",
+      });
+    }
+
+    const oldEmail = user.email;
+    user.email = newEmail;
+    await user.save();
+
+    try {
+      await sendEmailChangedNotifications(
+        oldEmail,
+        user.email,
+        user.name,
+      );
+    } catch (emailError) {
+      console.error(
+        "Email-change notification failed:",
+        emailError.message,
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Email address updated successfully",
+      email: user.email,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password and new password are required",
+      });
+    }
+
+    if (!strongPasswordRegex.test(newPassword)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Password must be at least 8 characters and include uppercase, lowercase, number, and special character.",
+      });
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be different from your current password",
+      });
+    }
+
+    const user = await User.findById(req.user._id);
+    const passwordMatches = await bcrypt.compare(
+      currentPassword,
+      user.password,
+    );
+
+    if (!passwordMatches) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password is incorrect",
+      });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    try {
+      await sendPasswordChangedEmail(user.email, user.name);
+    } catch (emailError) {
+      console.error(
+        "Password-change notification failed:",
+        emailError.message,
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Password changed successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 const deleteAccount = async (req, res) => {
   try {
     const userId = req.user._id;
+    const { currentPassword } = req.body;
 
-    // Soft delete user
-    await User.findByIdAndUpdate(userId, {
-      isDeleted: true,
-      deletedAt: new Date(),
-    });
+    if (!currentPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password is required",
+      });
+    }
 
-    // Hide user's items
-    await Item.updateMany(
-      {
-        owner: userId,
-      },
-      {
-        isActive: false,
-      },
+    const user = await User.findById(userId);
+    const passwordMatches = await bcrypt.compare(
+      currentPassword,
+      user.password,
     );
+
+    if (!passwordMatches) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password is incorrect",
+      });
+    }
+
+    const [outgoingRequestCounts, ownedItems] = await Promise.all([
+      Request.aggregate([
+        { $match: { requester: userId } },
+        {
+          $group: {
+            _id: "$item",
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+      Item.find({ owner: userId }).select("_id"),
+    ]);
+
+    const ownedItemIds = ownedItems.map((item) => item._id);
+
+    await Promise.all([
+      User.findByIdAndUpdate(userId, {
+        isDeleted: true,
+        deletedAt: new Date(),
+        email: `deleted-${userId}-${Date.now()}@deleted.needful.invalid`,
+        resetPasswordToken: "",
+        resetPasswordExpires: null,
+        verificationCode: "",
+        verificationCodeExpires: null,
+        savedItems: [],
+      }),
+      Item.updateMany({ owner: userId }, { isActive: false }),
+      Request.deleteMany({
+        $or: [
+          { requester: userId },
+          { item: { $in: ownedItemIds } },
+        ],
+      }),
+      Notification.deleteMany({
+        $or: [{ sender: userId }, { recipient: userId }],
+      }),
+      ...outgoingRequestCounts.map(({ _id: itemId, count }) =>
+        Item.updateOne({ _id: itemId }, [
+          {
+            $set: {
+              requestCount: {
+                $max: [
+                  0,
+                  {
+                    $subtract: [
+                      { $ifNull: ["$requestCount", 0] },
+                      count,
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+        ]),
+      ),
+    ]);
+
+    res.cookie("token", "", {
+      httpOnly: true,
+      expires: new Date(0),
+    });
 
     res.status(200).json({
       success: true,
@@ -519,7 +852,10 @@ module.exports = {
   forgotPassword,
   resetPassword,
   getProfile,
+  getPublicProfile,
   updateProfile,
+  changeEmail,
+  changePassword,
   getSavedItems,
   saveItem,
   removeSavedItem,

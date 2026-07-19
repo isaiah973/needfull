@@ -131,7 +131,13 @@ const getMyRequests = async (req, res) => {
     const requests = await Request.find({
       requester: req.user._id,
     })
-      .populate("item")
+      .populate({
+        path: "item",
+        populate: {
+          path: "owner",
+          select: "name avatar",
+        },
+      })
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -161,12 +167,18 @@ const getReceivedRequests = async (req, res) => {
       item: { $in: itemIds },
     })
       .populate("item")
-      .populate("requester", "name email")
+      .populate({
+        path: "requester",
+        match: { isDeleted: false },
+        select: "name email phone avatar",
+      })
       .sort({ createdAt: -1 });
+
+    const visibleRequests = requests.filter((request) => request.requester);
 
     res.status(200).json({
       success: true,
-      requests,
+      requests: visibleRequests,
     });
   } catch (error) {
     res.status(500).json({
@@ -178,28 +190,32 @@ const getReceivedRequests = async (req, res) => {
 
 const approveRequest = async (req, res) => {
   try {
-    const request = await Request.findById(req.params.id);
+    const request = await Request.findById(req.params.id).populate(
+      "item",
+      "owner status",
+    );
 
-    if (!request) {
+    if (!request || !request.item) {
       return res.status(404).json({
         success: false,
         message: "Request not found",
       });
     }
 
-    if (request.owner.toString() !== req.user._id.toString()) {
+    if (request.item.owner.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
         message: "Not authorized",
       });
     }
 
-    request.status = "approved";
-    await request.save();
+    await Request.findByIdAndUpdate(request._id, {
+      status: "approved",
+    });
 
     await Request.updateMany(
       {
-        item: request.item,
+        item: request.item._id,
         _id: { $ne: request._id },
       },
       {
@@ -207,7 +223,7 @@ const approveRequest = async (req, res) => {
       },
     );
 
-    await Item.findByIdAndUpdate(request.item, {
+    await Item.findByIdAndUpdate(request.item._id, {
       status: "reserved",
     });
 
@@ -225,25 +241,28 @@ const approveRequest = async (req, res) => {
 
 const rejectRequest = async (req, res) => {
   try {
-    const request = await Request.findById(req.params.id);
+    const request = await Request.findById(req.params.id).populate(
+      "item",
+      "owner",
+    );
 
-    if (!request) {
+    if (!request || !request.item) {
       return res.status(404).json({
         success: false,
         message: "Request not found",
       });
     }
 
-    if (request.owner.toString() !== req.user._id.toString()) {
+    if (request.item.owner.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
         message: "Not authorized",
       });
     }
 
-    request.status = "rejected";
-
-    await request.save();
+    await Request.findByIdAndUpdate(request._id, {
+      status: "rejected",
+    });
 
     res.status(200).json({
       success: true,
@@ -259,27 +278,30 @@ const rejectRequest = async (req, res) => {
 
 const completeRequest = async (req, res) => {
   try {
-    const request = await Request.findById(req.params.id);
+    const request = await Request.findById(req.params.id).populate(
+      "item",
+      "owner",
+    );
 
-    if (!request) {
+    if (!request || !request.item) {
       return res.status(404).json({
         success: false,
         message: "Request not found",
       });
     }
 
-    if (request.owner.toString() !== req.user._id.toString()) {
+    if (request.item.owner.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
         message: "Not authorized",
       });
     }
 
-    request.status = "completed";
+    await Request.findByIdAndUpdate(request._id, {
+      status: "completed",
+    });
 
-    await request.save();
-
-    await Item.findByIdAndUpdate(request.item, {
+    await Item.findByIdAndUpdate(request.item._id, {
       status: "given",
       givenAt: new Date(),
     });

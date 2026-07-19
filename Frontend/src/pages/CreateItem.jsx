@@ -24,6 +24,10 @@ const conditions = ["new", "excellent", "good", "fair", "poor"];
 
 const MAX_IMAGES = 5;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_DESCRIPTION_WORDS = 150;
+const MAX_DESCRIPTION_CHARACTERS = 1000;
+const countWords = (value = "") =>
+  value.trim() ? value.trim().split(/\s+/).length : 0;
 
 const CreateItem = () => {
   const navigate = useNavigate();
@@ -42,6 +46,7 @@ const CreateItem = () => {
   const [dragging, setDragging] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const descriptionWordCount = countWords(formData.description);
 
   useEffect(() => {
     return () => {
@@ -151,6 +156,10 @@ const CreateItem = () => {
       return "Enter a description for the item.";
     }
 
+    if (descriptionWordCount > MAX_DESCRIPTION_WORDS) {
+      return `Keep the description within ${MAX_DESCRIPTION_WORDS} words.`;
+    }
+
     if (images.length === 0) {
       return "Upload at least one item image.";
     }
@@ -200,7 +209,7 @@ const CreateItem = () => {
   };
 
   return (
-    <main className="min-h-screen bg-[#eef7f8] px-4 py-8 sm:px-6 lg:py-12">
+    <main className="min-h-screen bg-charcoal-50 px-4 py-8 sm:px-6 lg:py-12">
       <div className="mx-auto max-w-7xl">
         {/* Page heading */}
 
@@ -231,7 +240,7 @@ const CreateItem = () => {
         <form onSubmit={handleSubmit}>
           {/* Main split layout */}
 
-          <div className="grid border border-slate-200 bg-white shadow-xl lg:grid-cols-5">
+          <div className="grid overflow-hidden rounded-t-3xl border border-slate-200 bg-white shadow-sm lg:grid-cols-5">
             {/* Left panel */}
 
             <section className="p-6 sm:p-9 lg:col-span-3 lg:p-12">
@@ -253,8 +262,8 @@ const CreateItem = () => {
                     htmlFor="title"
                     className="mb-3 flex items-center gap-3 text-sm font-semibold text-slate-700"
                   >
-                    <span className="flex h-10 w-10 items-center justify-center bg-yellow-100">
-                      <Package size={20} className="text-yellow-600" />
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-charcoal-100">
+                      <Package size={20} className="text-charcoal-700" />
                     </span>
                     Item title
                   </label>
@@ -267,7 +276,7 @@ const CreateItem = () => {
                     onChange={handleChange}
                     maxLength={100}
                     placeholder="For example: Wooden study table"
-                    className="w-full border-0 border-b-2 border-slate-200 bg-transparent px-1 py-4 text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-yellow-500"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-100"
                   />
 
                   <p className="mt-2 text-right text-xs text-slate-400">
@@ -282,8 +291,8 @@ const CreateItem = () => {
                     htmlFor="category"
                     className="mb-3 flex items-center gap-3 text-sm font-semibold text-slate-700"
                   >
-                    <span className="flex h-10 w-10 items-center justify-center bg-blue-100">
-                      <Tag size={20} className="text-blue-600" />
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-charcoal-100">
+                      <Tag size={20} className="text-charcoal-700" />
                     </span>
                     Category
                   </label>
@@ -293,7 +302,7 @@ const CreateItem = () => {
                     name="category"
                     value={formData.category}
                     onChange={handleChange}
-                    className="w-full cursor-pointer border-0 border-b-2 border-slate-200 bg-transparent px-1 py-4 text-slate-700 outline-none transition-colors focus:border-blue-500"
+                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-slate-700 outline-none transition-colors focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-100"
                   >
                     <option value="">Choose a category</option>
 
@@ -309,8 +318,8 @@ const CreateItem = () => {
 
                 <fieldset>
                   <legend className="mb-4 flex items-center gap-3 text-sm font-semibold text-slate-700">
-                    <span className="flex h-10 w-10 items-center justify-center bg-amber-100">
-                      <Star size={20} className="text-amber-500" />
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-charcoal-100">
+                      <Star size={20} className="text-charcoal-700" />
                     </span>
                     Condition
                   </legend>
@@ -325,7 +334,7 @@ const CreateItem = () => {
                           type="button"
                           aria-pressed={selected}
                           onClick={() => selectCondition(condition)}
-                          className={`border px-3 py-3 text-sm font-medium capitalize transition-colors ${
+                          className={`rounded-xl border px-3 py-3 text-sm font-medium capitalize transition-colors ${
                             selected
                               ? "border-primary-700 bg-primary-700 text-white"
                               : "border-slate-200 bg-slate-50 text-slate-600 hover:border-primary-400 hover:bg-primary-50"
@@ -345,8 +354,8 @@ const CreateItem = () => {
                     htmlFor="location"
                     className="mb-3 flex items-center gap-3 text-sm font-semibold text-slate-700"
                   >
-                    <span className="flex h-10 w-10 items-center justify-center bg-red-100">
-                      <MapPin size={20} className="text-red-500" />
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-charcoal-100">
+                      <MapPin size={20} className="text-charcoal-700" />
                     </span>
                     Pickup location
                   </label>
@@ -358,7 +367,7 @@ const CreateItem = () => {
                     value={formData.location}
                     onChange={handleChange}
                     placeholder="For example: Ibadan, Oyo"
-                    className="w-full border-0 border-b-2 border-slate-200 bg-transparent px-1 py-4 text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-red-500"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-100"
                   />
                 </div>
 
@@ -369,7 +378,7 @@ const CreateItem = () => {
                     htmlFor="description"
                     className="mb-3 flex items-center gap-3 text-sm font-semibold text-slate-700"
                   >
-                    <span className="flex h-10 w-10 items-center justify-center bg-primary-100">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-charcoal-100">
                       <FileText size={20} className="text-primary-700" />
                     </span>
                     Description
@@ -381,29 +390,41 @@ const CreateItem = () => {
                     value={formData.description}
                     onChange={handleChange}
                     rows={6}
-                    maxLength={1000}
+                    maxLength={MAX_DESCRIPTION_CHARACTERS}
                     placeholder="Mention its size, colour, defects, missing parts and anything else the recipient should know."
-                    className="w-full resize-none border border-slate-200 bg-slate-50 px-4 py-4 text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-primary-600 focus:bg-white"
+                    className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-100"
                   />
 
-                  <p className="mt-2 text-right text-xs text-slate-400">
-                    {formData.description.length}/1000
-                  </p>
+                  <div className="mt-2 flex items-center justify-between gap-3 text-xs">
+                    <p
+                      className={
+                        descriptionWordCount > MAX_DESCRIPTION_WORDS
+                          ? "font-semibold text-charcoal-800"
+                          : "text-slate-400"
+                      }
+                    >
+                      {descriptionWordCount}/{MAX_DESCRIPTION_WORDS} words
+                    </p>
+                    <p className="text-slate-400">
+                      {formData.description.length}/
+                      {MAX_DESCRIPTION_CHARACTERS} characters
+                    </p>
+                  </div>
                 </div>
               </div>
             </section>
 
             {/* Right panel */}
 
-            <section className="bg-primary-700 p-6 text-white sm:p-9 lg:col-span-2 lg:p-12">
+            <section className="border-t border-slate-200 bg-charcoal-50 p-6 text-charcoal-900 sm:p-9 lg:col-span-2 lg:border-l lg:border-t-0 lg:p-12">
               <div className="mb-8">
-                <span className="flex h-12 w-12 items-center justify-center bg-white/15">
-                  <ImagePlus size={25} className="text-yellow-300" />
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-100">
+                  <ImagePlus size={25} className="text-primary-700" />
                 </span>
 
                 <h2 className="mt-5 text-2xl font-semibold">Upload photos</h2>
 
-                <p className="mt-3 text-sm leading-7 text-primary-100">
+                <p className="mt-3 text-sm leading-7 text-charcoal-500">
                   Add clear photos from different angles. The first photo will
                   be used as the cover image.
                 </p>
@@ -422,10 +443,10 @@ const CreateItem = () => {
                   setDragging(false);
                   addImages(event.dataTransfer.files);
                 }}
-                className={`flex min-h-64 cursor-pointer flex-col items-center justify-center border-2 border-dashed px-6 text-center transition-colors ${
+                className={`flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-white px-6 text-center transition-colors ${
                   dragging
-                    ? "border-yellow-300 bg-white/20"
-                    : "border-white/40 bg-white/10 hover:border-yellow-300 hover:bg-white/15"
+                    ? "border-primary-500 bg-primary-50"
+                    : "border-charcoal-300 hover:border-primary-400 hover:bg-primary-50/50"
                 }`}
               >
                 <input
@@ -439,31 +460,31 @@ const CreateItem = () => {
                   }}
                 />
 
-                <UploadCloud size={46} className="text-yellow-300" />
+                <UploadCloud size={46} className="text-primary-600" />
 
                 <h3 className="mt-5 text-lg font-semibold">
                   Drag and drop photos
                 </h3>
 
-                <p className="mt-2 text-sm text-primary-100">
+                <p className="mt-2 text-sm text-charcoal-500">
                   or click to browse your device
                 </p>
 
                 <div className="mt-5 flex flex-wrap justify-center gap-2">
-                  <span className="bg-yellow-300 px-3 py-1 text-xs font-semibold text-slate-900">
+                  <span className="rounded-full bg-charcoal-100 px-3 py-1 text-xs font-semibold text-charcoal-700">
                     JPG
                   </span>
 
-                  <span className="bg-red-400 px-3 py-1 text-xs font-semibold text-white">
+                  <span className="rounded-full bg-charcoal-100 px-3 py-1 text-xs font-semibold text-charcoal-700">
                     PNG
                   </span>
 
-                  <span className="bg-blue-500 px-3 py-1 text-xs font-semibold text-white">
+                  <span className="rounded-full bg-charcoal-100 px-3 py-1 text-xs font-semibold text-charcoal-700">
                     WEBP
                   </span>
                 </div>
 
-                <p className="mt-5 text-xs text-primary-100">
+                <p className="mt-5 text-xs text-charcoal-400">
                   Maximum {MAX_IMAGES} photos · 5MB each
                 </p>
               </label>
@@ -475,7 +496,7 @@ const CreateItem = () => {
                   <div className="mb-4 flex items-center justify-between">
                     <h3 className="text-sm font-semibold">Selected photos</h3>
 
-                    <span className="bg-white/15 px-3 py-1 text-xs">
+                    <span className="rounded-full bg-charcoal-100 px-3 py-1 text-xs text-charcoal-700">
                       {images.length}/{MAX_IMAGES}
                     </span>
                   </div>
@@ -484,7 +505,7 @@ const CreateItem = () => {
                     {images.map((image, index) => (
                       <div
                         key={image.id}
-                        className="group relative overflow-hidden border border-white/20 bg-white/10"
+                        className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white"
                       >
                         <img
                           src={image.preview}
@@ -493,7 +514,7 @@ const CreateItem = () => {
                         />
 
                         {index === 0 && (
-                          <span className="absolute bottom-2 left-2 bg-yellow-300 px-2 py-1 text-[10px] font-semibold text-slate-900">
+                          <span className="absolute bottom-2 left-2 rounded-lg bg-primary-600 px-2 py-1 text-[10px] font-semibold text-white">
                             Cover
                           </span>
                         )}
@@ -502,7 +523,7 @@ const CreateItem = () => {
                           type="button"
                           onClick={() => removeImage(image.id)}
                           aria-label={`Remove image ${index + 1}`}
-                          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center bg-red-500 text-white transition-colors hover:bg-red-600"
+                          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-lg bg-charcoal-900 text-white transition-colors hover:bg-charcoal-700"
                         >
                           <X size={16} />
                         </button>
@@ -514,14 +535,14 @@ const CreateItem = () => {
 
               {/* Upload advice */}
 
-              <div className="mt-8 border border-white/20 bg-white/10 p-5">
+              <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-5">
                 <div className="flex items-start gap-3">
                   <Lightbulb
                     size={20}
-                    className="mt-0.5 shrink-0 text-yellow-300"
+                    className="mt-0.5 shrink-0 text-primary-600"
                   />
 
-                  <p className="text-sm leading-6 text-primary-50">
+                  <p className="text-sm leading-6 text-charcoal-600">
                     Use good lighting and show the complete item.
                   </p>
                 </div>
@@ -529,10 +550,10 @@ const CreateItem = () => {
                 <div className="mt-4 flex items-start gap-3">
                   <ShieldCheck
                     size={20}
-                    className="mt-0.5 shrink-0 text-blue-200"
+                    className="mt-0.5 shrink-0 text-charcoal-500"
                   />
 
-                  <p className="text-sm leading-6 text-primary-50">
+                  <p className="text-sm leading-6 text-charcoal-600">
                     Avoid including addresses, documents or private information
                     in the photos.
                   </p>
@@ -546,7 +567,7 @@ const CreateItem = () => {
           {error && (
             <div
               role="alert"
-              className="border-x border-b border-red-200 bg-red-50 px-6 py-4 text-sm font-medium text-red-700 sm:px-9"
+              className="border-x border-b border-charcoal-300 bg-charcoal-100 px-6 py-4 text-sm font-medium text-charcoal-800 sm:px-9"
             >
               {error}
             </div>
@@ -554,12 +575,12 @@ const CreateItem = () => {
 
           {/* Actions remain below both panels */}
 
-          <div className="flex flex-col-reverse gap-3 border border-t-0 border-slate-200 bg-white px-6 py-6 shadow-xl sm:flex-row sm:justify-end sm:px-9">
+          <div className="flex flex-col-reverse gap-3 rounded-b-3xl border border-t-0 border-slate-200 bg-white px-6 py-6 shadow-sm sm:flex-row sm:justify-end sm:px-9">
             <button
               type="button"
               onClick={() => navigate(-1)}
               disabled={submitting}
-              className="border border-slate-300 bg-white px-8 py-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-red-400 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-xl border border-slate-300 bg-white px-8 py-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-charcoal-500 hover:bg-charcoal-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Cancel
             </button>
@@ -567,7 +588,7 @@ const CreateItem = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="flex min-w-40 items-center justify-center bg-primary-700 px-8 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-primary-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex min-w-40 items-center justify-center rounded-xl bg-primary-700 px-8 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-primary-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {submitting ? (
                 <Loader2 size={20} className="animate-spin" />

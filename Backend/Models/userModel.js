@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const nigerianStates = require("../constants/nigerianStates");
 const addressSchema = new mongoose.Schema(
   {
     fullName: {
@@ -49,6 +50,13 @@ const userSchema = new mongoose.Schema(
     name: {
       type: String,
       required: [true, "Name is required"],
+      trim: true,
+    },
+
+    state: {
+      type: String,
+      enum: ["", ...nigerianStates],
+      default: "",
       trim: true,
     },
 

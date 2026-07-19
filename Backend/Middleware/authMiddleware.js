@@ -22,6 +22,12 @@ const protect = async (req, res, next) => {
         message: "User not found",
       });
     }
+    if (user.isDeleted) {
+      return res.status(401).json({
+        success: false,
+        message: "This account has been permanently deleted",
+      });
+    }
     // Prevent suspended users from accessing protected routes
     if (user.isSuspended) {
       return res.status(403).json({
@@ -67,7 +73,7 @@ const protectOptional = async (req, res, next) => {
 
     const user = await User.findById(decoded.userId).select("-password");
 
-    req.user = user || null;
+    req.user = user && !user.isDeleted ? user : null;
 
     next();
   } catch (error) {

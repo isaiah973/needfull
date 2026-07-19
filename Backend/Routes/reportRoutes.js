@@ -2,6 +2,7 @@ const express = require("express");
 
 const {
   createReport,
+  getMyReportStatus,
   getAllReports,
   getSingleReport,
   resolveReport,
@@ -14,6 +15,7 @@ const { adminOnly, superAdminOnly } = require("../Middleware/adminMiddleware");
 const router = express.Router();
 
 // User
+router.get("/item/:id/status", protect, getMyReportStatus);
 router.post("/:id", protect, createReport);
 
 // Admin

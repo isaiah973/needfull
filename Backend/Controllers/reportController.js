@@ -2,11 +2,23 @@ const mongoose = require("mongoose");
 const Report = require("../Models/reportModel");
 const Item = require("../Models/itemModel");
 
+const REPORT_REASONS = [
+  "spam",
+  "fake",
+  "scam",
+  "offensive",
+  "harassment",
+  "duplicate",
+  "wrong-category",
+  "other",
+];
+
 // USER: Report an item
 const createReport = async (req, res) => {
   try {
     const { id } = req.params;
-    const { reason, description } = req.body;
+    const reason = req.body.reason?.trim();
+    const description = req.body.description?.trim() || "";
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
@@ -28,6 +40,20 @@ const createReport = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "You cannot report your own item",
+      });
+    }
+
+    if (!REPORT_REASONS.includes(reason)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please select a valid reason for the report",
+      });
+    }
+
+    if (description.length > 500) {
+      return res.status(400).json({
+        success: false,
+        message: "Report details cannot be longer than 500 characters",
       });
     }
 
@@ -62,6 +88,39 @@ const createReport = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to submit report",
+    });
+  }
+};
+
+// USER: Check whether the signed-in user has a pending report for an item
+const getMyReportStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid item ID",
+      });
+    }
+
+    const report = await Report.findOne({
+      reporter: req.user._id,
+      item: id,
+      status: "pending",
+    }).select("status createdAt");
+
+    res.status(200).json({
+      success: true,
+      hasReported: Boolean(report),
+      report,
+    });
+  } catch (error) {
+    console.error("getMyReportStatus:", error.message);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to check report status",
     });
   }
 };
@@ -200,6 +259,7 @@ const dismissReport = async (req, res) => {
 
 module.exports = {
   createReport,
+  getMyReportStatus,
   getAllReports,
   getSingleReport,
   resolveReport,

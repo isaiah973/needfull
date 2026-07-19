@@ -12,8 +12,28 @@
   --color-primary-800: #0b6261;
   --color-primary-900: #0d5150;
   --color-primary-950: #033132;
+
+  --color-charcoal-50: #f7f7f6;
+  --color-charcoal-100: #e8e8e6;
+  --color-charcoal-200: #d1d1ce;
+  --color-charcoal-300: #aaa9a4;
+  --color-charcoal-400: #777670;
+  --color-charcoal-500: #55544f;
+  --color-charcoal-600: #41403c;
+  --color-charcoal-700: #343330;
+  --color-charcoal-800: #282724;
+  --color-charcoal-900: #1f1f1c;
+  --color-charcoal-950: #121211;
 }
 
 body {
   font-family: "Poppins", sans-serif;
+}
+
+.auth-page :is(button, input, select, a) {
+  border-radius: 0.75rem;
+}
+
+.profile-dashboard :is(button, input, select, textarea, img) {
+  border-radius: 0.75rem;
 }

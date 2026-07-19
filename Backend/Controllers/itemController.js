@@ -2,9 +2,35 @@ const mongoose = require("mongoose");
 const Item = require("../Models/itemModel");
 const uploadToCloudinary = require("../utils/uploadToCloudinary");
 
+const MAX_DESCRIPTION_WORDS = 150;
+const MAX_DESCRIPTION_CHARACTERS = 1000;
+const countWords = (value = "") =>
+  value.trim() ? value.trim().split(/\s+/).length : 0;
+const escapeRegex = (value = "") =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const validateDescription = (description) => {
+  if (!description?.trim()) return "Description is required";
+  if (countWords(description) > MAX_DESCRIPTION_WORDS) {
+    return `Description cannot exceed ${MAX_DESCRIPTION_WORDS} words`;
+  }
+  if (description.length > MAX_DESCRIPTION_CHARACTERS) {
+    return `Description cannot exceed ${MAX_DESCRIPTION_CHARACTERS.toLocaleString()} characters`;
+  }
+  return "";
+};
+
 const createItem = async (req, res) => {
   try {
     const { title, description, category, condition, location } = req.body;
+    const descriptionError = validateDescription(description);
+
+    if (descriptionError) {
+      return res.status(400).json({
+        success: false,
+        message: descriptionError,
+      });
+    }
 
     let images = [];
 
@@ -50,11 +76,12 @@ const getAllItems = async (req, res) => {
     };
 
     // Search by title
-    if (search) {
-      filter.title = {
-        $regex: search,
-        $options: "i",
-      };
+    if (search?.trim()) {
+      const safeSearch = escapeRegex(search.trim());
+      filter.$or = [
+        { title: { $regex: safeSearch, $options: "i" } },
+        { description: { $regex: safeSearch, $options: "i" } },
+      ];
     }
 
     // Filter by category
@@ -63,8 +90,11 @@ const getAllItems = async (req, res) => {
     }
 
     // Filter by location
-    if (location) {
-      filter.location = location;
+    if (location?.trim()) {
+      filter.location = {
+        $regex: escapeRegex(location.trim()),
+        $options: "i",
+      };
     }
 
     // Filter by condition
@@ -79,6 +109,10 @@ const getAllItems = async (req, res) => {
       query = query.sort({ createdAt: -1 });
     } else if (sort === "oldest") {
       query = query.sort({ createdAt: 1 });
+    } else if (sort === "popular") {
+      query = query.sort({ views: -1, createdAt: -1 });
+    } else if (sort === "requested") {
+      query = query.sort({ requestCount: -1, createdAt: -1 });
     } else {
       // Default: newest first
       query = query.sort({ createdAt: -1 });
@@ -182,6 +216,17 @@ const updateItem = async (req, res) => {
         success: false,
         message: "This item is no longer active and cannot be updated.",
       });
+    }
+
+    if (req.body.description !== undefined) {
+      const descriptionError = validateDescription(req.body.description);
+
+      if (descriptionError) {
+        return res.status(400).json({
+          success: false,
+          message: descriptionError,
+        });
+      }
     }
 
     const allowedFields = [

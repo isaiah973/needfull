@@ -5,10 +5,13 @@ import Login from "./pages/Login";
 import CreateItem from "./pages/CreateItem";
 import Register from "./pages/Register";
 import VerifyEmail from "./pages/VerifyEmail";
+import Profile from "./pages/Profile";
+import PublicProfile from "./pages/PublicProfile";
 
 import ItemDetails from "./pages/items/ItemDetails";
 
 import GuestRoute from "./components/GuestRoute";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
   return (
@@ -17,6 +20,7 @@ function App() {
       <Route path="/" element={<Home />} />
 
       <Route path="/items/:id" element={<ItemDetails />} />
+      <Route path="/users/:id" element={<PublicProfile />} />
 
       {/* Authentication */}
 
@@ -46,7 +50,30 @@ function App() {
           </GuestRoute>
         }
       />
-      <Route path="/create-item" element={<CreateItem />} />
+      <Route
+        path="/create-item"
+        element={
+          <ProtectedRoute>
+            <CreateItem />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 }
