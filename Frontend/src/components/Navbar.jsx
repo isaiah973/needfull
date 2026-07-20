@@ -117,6 +117,14 @@ const Navbar = () => {
     setOpenPanel((current) => (current === panel ? "" : panel));
   };
 
+  const toggleNotifications = () => {
+    setOpenPanel((current) =>
+      current === "notifications" ? "" : "notifications",
+    );
+    setMobileOpen(false);
+    setMobileSearchOpen(false);
+  };
+
   const goTo = (path) => {
     setOpenPanel("");
     setMobileOpen(false);
@@ -160,7 +168,20 @@ const Navbar = () => {
       );
     }
 
-    if (notification.item?._id) {
+    const requestId =
+      typeof notification.request === "object"
+        ? notification.request?._id
+        : notification.request;
+
+    if (notification.type === "new_request" && requestId) {
+      if (currentUserId) {
+        sessionStorage.setItem(
+          `needful_dashboard_${currentUserId}_tab`,
+          "received",
+        );
+      }
+      goTo(`/profile?tab=received&request=${requestId}`);
+    } else if (notification.item?._id) {
       goTo(`/items/${notification.item._id}`);
     } else {
       openDashboardTab("received");
@@ -188,7 +209,7 @@ const Navbar = () => {
   return (
     <nav
       ref={navRef}
-      className="sticky top-0 z-50 border-b border-slate-200/90 bg-white/95 shadow-[0_1px_12px_rgba(15,23,42,0.04)] backdrop-blur-xl"
+      className="sticky top-0 z-50 w-full max-w-full border-b border-slate-200/90 bg-white/95 shadow-[0_1px_12px_rgba(15,23,42,0.04)] backdrop-blur-xl"
     >
       <div className="mx-auto flex h-[72px] max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
         <button
@@ -239,7 +260,7 @@ const Navbar = () => {
             </button>
 
             {openPanel === "categories" && (
-              <div className="absolute left-0 top-[calc(100%+14px)] w-[620px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_60px_rgba(15,23,42,0.16)]">
+              <div className="nav-dropdown-enter absolute left-0 top-[calc(100%+14px)] w-[620px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_60px_rgba(15,23,42,0.16)]">
                 <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
                   <div>
                     <p className="font-bold text-charcoal-900">
@@ -309,6 +330,7 @@ const Navbar = () => {
             onClick={() => {
               setMobileSearchOpen((current) => !current);
               setMobileOpen(false);
+              setOpenPanel("");
             }}
             className="grid h-10 w-10 place-items-center rounded-xl text-charcoal-600 transition hover:bg-charcoal-50 md:hidden"
             aria-label="Search"
@@ -330,10 +352,10 @@ const Navbar = () => {
           </button>
 
           {isAuthenticated && (
-            <div className="relative hidden sm:block">
+            <div className="relative block">
               <button
                 type="button"
-                onClick={() => togglePanel("notifications")}
+                onClick={toggleNotifications}
                 aria-label="Notifications"
                 aria-expanded={openPanel === "notifications"}
                 className={`relative grid h-10 w-10 place-items-center rounded-xl transition ${
@@ -351,8 +373,8 @@ const Navbar = () => {
               </button>
 
               {openPanel === "notifications" && (
-                <div className="absolute right-0 top-[calc(100%+14px)] w-[360px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_60px_rgba(15,23,42,0.16)]">
-                  <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+                <div className="nav-dropdown-enter absolute right-0 top-[calc(100%+14px)] w-[min(360px,calc(100vw-24px))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_60px_rgba(15,23,42,0.16)]">
+                  <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-4 sm:px-5">
                     <div>
                       <p className="font-bold text-charcoal-900">
                         Notifications
@@ -367,10 +389,13 @@ const Navbar = () => {
                       <button
                         type="button"
                         onClick={markAllAsRead}
+                        aria-label="Mark all notifications as read"
                         className="flex items-center gap-1.5 text-xs font-bold text-primary-700 hover:text-primary-900"
                       >
                         <CheckCheck size={15} />
-                        Mark all read
+                        <span className="hidden min-[380px]:inline">
+                          Mark all read
+                        </span>
                       </button>
                     )}
                   </div>
@@ -438,7 +463,7 @@ const Navbar = () => {
                     onClick={() => openDashboardTab("received")}
                     className="flex w-full items-center justify-center gap-2 border-t border-slate-100 px-5 py-3.5 text-sm font-bold text-primary-700 hover:bg-primary-50"
                   >
-                    Open request dashboard
+                    Open requests to review
                     <ChevronRight size={15} />
                   </button>
                 </div>
@@ -488,7 +513,7 @@ const Navbar = () => {
             )}
 
             {isAuthenticated && openPanel === "profile" && (
-              <div className="absolute right-0 top-[calc(100%+14px)] w-72 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_60px_rgba(15,23,42,0.16)]">
+              <div className="nav-dropdown-enter absolute right-0 top-[calc(100%+14px)] w-72 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_60px_rgba(15,23,42,0.16)]">
                 <div className="flex items-center gap-3 border-b border-slate-100 bg-charcoal-50/70 px-4 py-4">
                   <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-primary-100 font-bold text-primary-800">
                     {user?.avatar ? (
@@ -534,7 +559,7 @@ const Navbar = () => {
                     className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-charcoal-700 transition hover:bg-primary-50 hover:text-primary-800"
                   >
                     <Inbox size={17} />
-                    Interested users
+                    Requests to review
                     {unreadCount > 0 && (
                       <span className="ml-auto rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-bold text-primary-800">
                         {unreadCount}
@@ -570,6 +595,7 @@ const Navbar = () => {
             onClick={() => {
               setMobileOpen((current) => !current);
               setMobileSearchOpen(false);
+              setOpenPanel("");
             }}
             className={`grid h-10 w-10 place-items-center rounded-xl transition sm:hidden ${
               mobileOpen
@@ -587,7 +613,7 @@ const Navbar = () => {
       {mobileSearchOpen && (
         <form
           onSubmit={handleSearch}
-          className="border-t border-slate-100 bg-white px-4 py-3 md:hidden"
+          className="nav-mobile-enter border-t border-slate-100 bg-white px-4 py-3 md:hidden"
         >
           <div className="flex items-center rounded-xl border border-primary-300 bg-white px-3 ring-4 ring-primary-50">
             <Search size={17} className="text-primary-700" />
@@ -613,7 +639,7 @@ const Navbar = () => {
       )}
 
       {mobileOpen && (
-        <div className="border-t border-slate-100 bg-white shadow-xl sm:hidden">
+        <div className="nav-mobile-enter border-t border-slate-100 bg-white shadow-xl sm:hidden">
           <div className="max-h-[calc(100vh-72px)] overflow-y-auto px-4 py-4">
             {isAuthenticated && (
               <div className="mb-4 flex items-center gap-3 rounded-2xl bg-charcoal-50 p-3">
@@ -666,7 +692,7 @@ const Navbar = () => {
               </button>
 
               {mobileCategoriesOpen && (
-                <div className="grid grid-cols-2 gap-1 rounded-xl bg-charcoal-50 p-2">
+                <div className="nav-mobile-enter grid grid-cols-2 gap-1 rounded-xl bg-charcoal-50 p-2">
                   {categories.map((category) => (
                     <button
                       type="button"
@@ -714,8 +740,8 @@ const Navbar = () => {
                     onClick={() => openDashboardTab("received")}
                     className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold text-charcoal-700 hover:bg-primary-50 hover:text-primary-800"
                   >
-                    <Bell size={18} />
-                    Notifications
+                    <Inbox size={18} />
+                    Requests to review
                     {unreadCount > 0 && (
                       <span className="ml-auto rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-bold text-primary-800">
                         {unreadCount}

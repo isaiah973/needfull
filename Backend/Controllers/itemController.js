@@ -1,9 +1,15 @@
 const mongoose = require("mongoose");
 const Item = require("../Models/itemModel");
+const Notification = require("../Models/notificationModel");
+const Report = require("../Models/reportModel");
+const Request = require("../Models/requestModel");
 const uploadToCloudinary = require("../utils/uploadToCloudinary");
 
 const MAX_DESCRIPTION_WORDS = 150;
 const MAX_DESCRIPTION_CHARACTERS = 1000;
+const MAX_TITLE_LENGTH = 70;
+const MAX_LOCATION_LENGTH = 80;
+const MAX_ITEM_IMAGES = 5;
 const countWords = (value = "") =>
   value.trim() ? value.trim().split(/\s+/).length : 0;
 const escapeRegex = (value = "") =>
@@ -20,15 +26,46 @@ const validateDescription = (description) => {
   return "";
 };
 
+const validateItemText = ({ title, location }) => {
+  if (!title?.trim()) return "Item title is required";
+  if (title.trim().length > MAX_TITLE_LENGTH) {
+    return `Item title cannot exceed ${MAX_TITLE_LENGTH} characters`;
+  }
+  return validateLocation(location);
+};
+
+const validateLocation = (location) => {
+  if (!location?.trim()) return "Pickup location is required";
+  if (location.trim().length > MAX_LOCATION_LENGTH) {
+    return `Pickup location cannot exceed ${MAX_LOCATION_LENGTH} characters`;
+  }
+  return "";
+};
+
+const parseExistingImages = (value) => {
+  const parsedImages = JSON.parse(value);
+
+  if (!Array.isArray(parsedImages)) {
+    throw new Error("Existing images must be an array");
+  }
+
+  return parsedImages;
+};
+
+const arraysMatch = (left = [], right = []) =>
+  left.length === right.length &&
+  left.every((value, index) => value === right[index]);
+
 const createItem = async (req, res) => {
   try {
     const { title, description, category, condition, location } = req.body;
+    const itemTextError = validateItemText({ title, location });
     const descriptionError = validateDescription(description);
 
-    if (descriptionError) {
+    if (itemTextError || descriptionError) {
       return res.status(400).json({
         success: false,
-        message: descriptionError,
+        message: itemTextError || descriptionError,
       });
     }
 
@@ -147,6 +184,20 @@ const getSingleItem = async (req, res) => {
       });
     }
 
+    if (!item.contentLockedAt) {
+      const hasReceivedRequest =
+        item.requestCount > 0 ||
+        Boolean(await Request.exists({ item: item._id }));
+
+      if (hasReceivedRequest) {
+        item.contentLockedAt = new Date();
+        await Item.updateOne(
+          { _id: item._id, contentLockedAt: null },
+          { $set: { contentLockedAt: item.contentLockedAt } },
+        );
+      }
+    }
+
     res.status(200).json({
       success: true,
       item,
@@ -161,11 +212,37 @@ const getSingleItem = async (req, res) => {
 
 const recordView = async (req, res) => {
   try {
-    const item = await Item.findByIdAndUpdate(
-      req.params.id,
-      { $inc: { views: 1 } },
-      { new: true },
-    );
+    let item;
+    let counted = true;
+
+    if (req.user) {
+      item = await Item.findOneAndUpdate(
+        {
+          _id: req.params.id,
+          isActive: true,
+          viewedBy: { $ne: req.user._id },
+        },
+        {
+          $addToSet: { viewedBy: req.user._id },
+          $inc: { views: 1 },
+        },
+        { new: true },
+      );
+
+      if (!item) {
+        item = await Item.findOne({
+          _id: req.params.id,
+          isActive: true,
+        }).select("views");
+        counted = false;
+      }
+    } else {
+      item = await Item.findOneAndUpdate(
+        { _id: req.params.id, isActive: true },
+        { $inc: { views: 1 } },
+        { new: true },
+      );
+    }
 
     if (!item) {
       return res.status(404).json({
@@ -177,6 +254,7 @@ const recordView = async (req, res) => {
     res.status(200).json({
       success: true,
       views: item.views,
+      counted,
     });
   } catch (error) {
     res.status(500).json({
@@ -209,6 +287,14 @@ const getMyItems = async (req, res) => {
 const updateItem = async (req, res) => {
   try {
     const item = req.item; // injected by ownerOnly middleware
+    const hasExistingRequest = await Request.exists({ item: item._id });
+    const contentLocked = Boolean(
+      item.contentLockedAt || item.requestCount > 0 || hasExistingRequest,
+    );
+
+    if (contentLocked && !item.contentLockedAt) {
+      item.contentLockedAt = new Date();
+    }
 
     // Prevent updating inactive items
     if (!item.isActive) {
@@ -216,6 +302,43 @@ const updateItem = async (req, res) => {
         success: false,
         message: "This item is no longer active and cannot be updated.",
       });
+    }
+
+    if (contentLocked) {
+      let requestedExistingImages = item.images || [];
+
+      if (req.body.existingImages !== undefined) {
+        try {
+          requestedExistingImages = parseExistingImages(
+            req.body.existingImages,
+          );
+        } catch {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid existing image selection",
+          });
+        }
+      }
+
+      const lockedContentChanged =
+        (req.body.title !== undefined &&
+          req.body.title.trim() !== item.title) ||
+        (req.body.category !== undefined &&
+          req.body.category !== item.category) ||
+        (req.body.condition !== undefined &&
+          req.body.condition !== item.condition) ||
+        (req.body.description !== undefined &&
+          req.body.description.trim() !== item.description) ||
+        !arraysMatch(requestedExistingImages, item.images || []) ||
+        Boolean(req.files?.length);
+
+      if (lockedContentChanged) {
+        return res.status(409).json({
+          success: false,
+          message:
+            "This item has received a request. Its pictures and core details can no longer be changed.",
+        });
+      }
     }
 
     if (req.body.description !== undefined) {
@@ -229,20 +352,80 @@ const updateItem = async (req, res) => {
       }
     }
 
-    const allowedFields = [
-      "title",
-      "description",
-      "category",
-      "condition",
-      "location",
-      "status",
-    ];
+    const nextTitle = req.body.title ?? item.title;
+    const nextLocation = req.body.location ?? item.location;
+    const itemTextError = contentLocked
+      ? validateLocation(nextLocation)
+      : validateItemText({
+          title: nextTitle,
+          location: nextLocation,
+        });
+
+    if (itemTextError) {
+      return res.status(400).json({
+        success: false,
+        message: itemTextError,
+      });
+    }
+
+    const allowedFields = contentLocked
+      ? ["location", "status"]
+      : [
+          "title",
+          "description",
+          "category",
+          "condition",
+          "location",
+          "status",
+        ];
 
     allowedFields.forEach((field) => {
       if (req.body[field] !== undefined) {
         item[field] = req.body[field];
       }
     });
+
+    if (
+      !contentLocked &&
+      (req.body.existingImages !== undefined || req.files?.length)
+    ) {
+      let existingImages = item.images || [];
+
+      if (req.body.existingImages !== undefined) {
+        try {
+          const parsedImages = parseExistingImages(req.body.existingImages);
+
+          const currentImages = new Set(item.images || []);
+          existingImages = parsedImages.filter(
+            (image) =>
+              typeof image === "string" && currentImages.has(image),
+          );
+        } catch {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid existing image selection",
+          });
+        }
+      }
+
+      const newFiles = req.files || [];
+
+      if (existingImages.length + newFiles.length > MAX_ITEM_IMAGES) {
+        return res.status(400).json({
+          success: false,
+          message: `An item can have a maximum of ${MAX_ITEM_IMAGES} images`,
+        });
+      }
+
+      const uploadedImages = await Promise.all(
+        newFiles.map((file) => uploadToCloudinary(file.buffer)),
+      );
+
+      item.images = [
+        ...existingImages,
+        ...uploadedImages.map((image) => image.secure_url),
+      ];
+    }
 
     await item.save();
 
@@ -277,7 +460,12 @@ const deleteItem = async (req, res) => {
       });
     }
 
-    await item.deleteOne();
+    await Promise.all([
+      item.deleteOne(),
+      Request.deleteMany({ item: item._id }),
+      Notification.deleteMany({ item: item._id }),
+      Report.deleteMany({ item: item._id }),
+    ]);
 
     res.status(200).json({
       success: true,

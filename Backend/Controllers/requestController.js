@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Request = require("../Models/requestModel");
 const Item = require("../Models/itemModel");
 const Notification = require("../Models/notificationModel");
@@ -83,6 +84,7 @@ const createRequest = async (req, res) => {
     });
 
     item.requestCount += 1;
+    item.contentLockedAt = item.contentLockedAt || new Date();
     await item.save();
 
     await Notification.create({
@@ -154,31 +156,64 @@ const getMyRequests = async (req, res) => {
 
 const getReceivedRequests = async (req, res) => {
   try {
-    // Find all items owned by the logged-in user
+    const requestedPage = Number.parseInt(req.query.page, 10) || 1;
+    const requestedLimit = Number.parseInt(req.query.limit, 10) || 20;
+    const page = Math.max(1, requestedPage);
+    const limit = Math.min(50, Math.max(1, requestedLimit));
+    const allowedStatuses = ["pending", "approved", "rejected", "completed"];
+    const status = allowedStatuses.includes(req.query.status)
+      ? req.query.status
+      : "";
+
     const myItems = await Item.find({
       owner: req.user._id,
     }).select("_id");
 
-    // Extract only the item IDs
     const itemIds = myItems.map((item) => item._id);
-
-    // Find requests for those items
-    const requests = await Request.find({
+    const filter = {
       item: { $in: itemIds },
-    })
-      .populate("item")
-      .populate({
-        path: "requester",
-        match: { isDeleted: false },
-        select: "name email phone avatar",
-      })
-      .sort({ createdAt: -1 });
+      ...(status && { status }),
+    };
+
+    if (mongoose.Types.ObjectId.isValid(req.query.requestId)) {
+      filter._id = req.query.requestId;
+    }
+
+    const [requests, total, statusCounts] = await Promise.all([
+      Request.find(filter)
+        .populate("item", "title images location status")
+        .populate({
+          path: "requester",
+          match: { isDeleted: false },
+          select: "name email phone avatar",
+        })
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      Request.countDocuments(filter),
+      Request.aggregate([
+        { $match: { item: { $in: itemIds } } },
+        { $group: { _id: "$status", count: { $sum: 1 } } },
+      ]),
+    ]);
 
     const visibleRequests = requests.filter((request) => request.requester);
+    const counts = statusCounts.reduce(
+      (result, entry) => ({ ...result, [entry._id]: entry.count }),
+      { pending: 0, approved: 0, rejected: 0, completed: 0 },
+    );
+    const totalPages = Math.max(1, Math.ceil(total / limit));
 
     res.status(200).json({
       success: true,
       requests: visibleRequests,
+      counts,
+      pagination: {
+        page: Math.min(page, totalPages),
+        limit,
+        total,
+        totalPages,
+      },
     });
   } catch (error) {
     res.status(500).json({

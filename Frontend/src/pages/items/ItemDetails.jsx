@@ -9,12 +9,15 @@ import {
   Flag,
   Heart,
   ImageOff,
+  LoaderCircle,
   MapPin,
   MessageCircle,
   PackageCheck,
+  Pencil,
   Share2,
   ShieldCheck,
   Send,
+  Trash2,
   UserRound,
   X,
 } from "lucide-react";
@@ -57,6 +60,8 @@ const ItemDetails = () => {
   const [reporting, setReporting] = useState(false);
   const [hasReported, setHasReported] = useState(false);
   const [expandedDescriptionId, setExpandedDescriptionId] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const ownerId =
     typeof item?.owner === "object" ? item.owner?._id : item?.owner;
   const currentUserId = user?._id || user?.id;
@@ -77,13 +82,30 @@ const ItemDetails = () => {
         setItem(nextItem);
         setSelectedImage(nextItem.images?.[0] || "");
 
-        const viewKey = `viewed_${id}`;
+        const viewKey = `viewed_${id}_guest`;
         const lastViewed = Number(localStorage.getItem(viewKey));
         const oneDay = 24 * 60 * 60 * 1000;
+        const shouldRecordView =
+          Boolean(currentUserId) ||
+          !lastViewed ||
+          Date.now() - lastViewed > oneDay;
 
-        if (!lastViewed || Date.now() - lastViewed > oneDay) {
-          api.post(`/items/${id}/view`).catch(() => {});
-          localStorage.setItem(viewKey, Date.now().toString());
+        if (shouldRecordView) {
+          api
+            .post(`/items/${id}/view`)
+            .then(({ data: viewData }) => {
+              if (!ignore) {
+                setItem((current) => ({
+                  ...current,
+                  views: viewData.views,
+                }));
+              }
+            })
+            .catch(() => {});
+
+          if (!currentUserId) {
+            localStorage.setItem(viewKey, Date.now().toString());
+          }
         }
       })
       .catch((err) => {
@@ -101,7 +123,7 @@ const ItemDetails = () => {
     return () => {
       ignore = true;
     };
-  }, [id]);
+  }, [currentUserId, id]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -279,9 +301,32 @@ const ItemDetails = () => {
     }
   };
 
+  const handleDeleteItem = async () => {
+    try {
+      setDeleting(true);
+      const { data } = await api.delete(`/items/${id}`);
+
+      if (currentUserId) {
+        sessionStorage.setItem(
+          `needful_dashboard_${currentUserId}_tab`,
+          "items",
+        );
+        sessionStorage.removeItem(
+          `needful_dashboard_${currentUserId}_cache`,
+        );
+      }
+
+      toast.success(data.message || "Item deleted");
+      navigate("/profile", { replace: true });
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Could not delete this item");
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-slate-50">
         <Navbar />
         <main className="mx-auto max-w-7xl animate-pulse px-5 py-10 sm:px-8">
           <div className="mb-8 h-5 w-40 rounded-full bg-slate-200" />
@@ -301,7 +346,7 @@ const ItemDetails = () => {
 
   if (error || !item) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-slate-50">
         <Navbar />
         <main className="mx-auto flex max-w-xl flex-col items-center px-6 py-28 text-center">
           <div className="grid h-16 w-16 place-items-center rounded-2xl bg-charcoal-100 text-charcoal-700">
@@ -328,7 +373,7 @@ const ItemDetails = () => {
   const isAvailable = item.status === "available";
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-slate-50">
       <Navbar />
 
       <main className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:py-10">
@@ -347,8 +392,8 @@ const ItemDetails = () => {
           <span className="truncate font-medium text-slate-800">{item.title}</span>
         </div>
 
-        <div className="grid items-start gap-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-12">
-          <section>
+        <div className="grid min-w-0 items-start gap-8 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)] lg:gap-12">
+          <section className="min-w-0">
             <div className="relative aspect-[4/3] overflow-hidden rounded-3xl bg-white shadow-[0_18px_50px_rgba(15,23,42,0.1)] ring-1 ring-slate-200">
               {selectedImage ? (
                 <img
@@ -400,7 +445,7 @@ const ItemDetails = () => {
             )}
           </section>
 
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_14px_40px_rgba(15,23,42,0.06)] sm:p-8">
+          <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_14px_40px_rgba(15,23,42,0.06)] sm:p-8">
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full bg-primary-50 px-3.5 py-2 text-xs font-bold text-primary-700 ring-1 ring-primary-100">
                 {item.category || "Other"}
@@ -410,7 +455,7 @@ const ItemDetails = () => {
               </span>
             </div>
 
-            <h1 className="mt-5 text-3xl font-bold leading-tight text-slate-900 sm:text-4xl">
+            <h1 className="mt-5 text-3xl font-bold leading-tight text-slate-900 [overflow-wrap:anywhere] sm:text-4xl">
               {item.title}
             </h1>
 
@@ -486,21 +531,39 @@ const ItemDetails = () => {
             </div>
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-              <button
-                type="button"
-                onClick={openRequestDialog}
-                disabled={!isAvailable || isOwner || hasRequested}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary-700 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-primary-700/20 transition hover:bg-primary-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
-              >
-                <PackageCheck size={18} />
-                {isOwner
-                  ? "This is your item"
-                  : hasRequested
+              {isOwner ? (
+                <div className="flex flex-1 gap-3">
+                  <Link
+                    to={`/items/${id}/edit`}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary-700 px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-primary-700/20 transition hover:bg-primary-800"
+                  >
+                    <Pencil size={17} />
+                    Edit item
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteDialogOpen(true)}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-charcoal-300 px-4 py-3.5 text-sm font-bold text-charcoal-800 transition hover:bg-charcoal-900 hover:text-white"
+                  >
+                    <Trash2 size={17} />
+                    <span className="hidden sm:inline">Delete</span>
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={openRequestDialog}
+                  disabled={!isAvailable || hasRequested}
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary-700 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-primary-700/20 transition hover:bg-primary-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+                >
+                  <PackageCheck size={18} />
+                  {hasRequested
                     ? "Request already sent"
-                  : isAvailable
-                    ? "Request this item"
-                    : "Item unavailable"}
-              </button>
+                    : isAvailable
+                      ? "Request this item"
+                      : "Item unavailable"}
+                </button>
+              )}
               <div className="flex gap-3">
                 <button
                   type="button"
@@ -530,7 +593,7 @@ const ItemDetails = () => {
 
             <Link
               to={isOwner ? "/profile" : `/users/${ownerId}`}
-              className="group/owner mt-7 flex items-center gap-4 border-t border-slate-100 pt-6 outline-none"
+              className="group/owner mt-7 flex min-w-0 items-center gap-4 border-t border-slate-100 pt-6 outline-none"
               aria-label={`View ${ownerName}'s profile`}
             >
               <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full bg-charcoal-800 font-bold text-white ring-4 ring-charcoal-100">
@@ -552,7 +615,7 @@ const ItemDetails = () => {
                   {ownerName}
                 </p>
               </div>
-              <div className="flex items-center gap-1.5 rounded-full bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-700 transition group-hover/owner:bg-primary-100">
+              <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-700 transition group-hover/owner:bg-primary-100">
                 <ShieldCheck size={15} />
                 View profile
               </div>
@@ -800,6 +863,62 @@ const ItemDetails = () => {
               {reporting ? "Submitting report..." : "Submit report"}
             </button>
           </form>
+        </div>
+      )}
+
+      {deleteDialogOpen && isOwner && (
+        <div
+          className="fixed inset-0 z-[110] flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-5"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !deleting) {
+              setDeleteDialogOpen(false);
+            }
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-item-title"
+            className="w-full rounded-t-3xl bg-white p-6 shadow-2xl sm:max-w-md sm:rounded-3xl sm:p-7"
+          >
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-charcoal-100 text-charcoal-800">
+              <Trash2 size={22} />
+            </div>
+            <h2
+              id="delete-item-title"
+              className="mt-5 text-2xl font-bold text-charcoal-950"
+            >
+              Delete this item?
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              This permanently removes “{item.title}” and all requests,
+              notifications, and reports connected to it.
+            </p>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setDeleteDialogOpen(false)}
+                disabled={deleting}
+                className="rounded-xl border border-slate-200 px-5 py-3 text-sm font-bold text-charcoal-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Keep item
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteItem}
+                disabled={deleting}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-charcoal-900 px-5 py-3 text-sm font-bold text-white hover:bg-charcoal-800 disabled:opacity-50"
+              >
+                {deleting ? (
+                  <LoaderCircle size={17} className="animate-spin" />
+                ) : (
+                  <Trash2 size={17} />
+                )}
+                {deleting ? "Deleting…" : "Delete permanently"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

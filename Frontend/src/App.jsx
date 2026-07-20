@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import CreateItem from "./pages/CreateItem";
+import EditItem from "./pages/EditItem";
 import Register from "./pages/Register";
 import VerifyEmail from "./pages/VerifyEmail";
 import Profile from "./pages/Profile";
@@ -55,6 +56,14 @@ function App() {
         element={
           <ProtectedRoute>
             <CreateItem />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/items/:id/edit"
+        element={
+          <ProtectedRoute>
+            <EditItem />
           </ProtectedRoute>
         }
       />

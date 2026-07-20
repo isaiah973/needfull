@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
+dotenv.config();
+
 const cookieParser = require("cookie-parser");
 const errorHandler = require("./Middleware/errorMiddleware");
 const requestRoutes = require("./Routes/requestRoutes");
@@ -9,8 +11,6 @@ const categoryRoutes = require("./Routes/categoryRoutes");
 
 const adminRoutes = require("./Routes/adminRoutes");
 const reportRoutes = require("./Routes/reportRoutes");
-
-dotenv.config();
 
 const connectDB = require("./config/db");
 const userRoutes = require("./Routes/userRoutes");

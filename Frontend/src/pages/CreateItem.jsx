@@ -24,6 +24,8 @@ const conditions = ["new", "excellent", "good", "fair", "poor"];
 
 const MAX_IMAGES = 5;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_TITLE_LENGTH = 70;
+const MAX_LOCATION_LENGTH = 80;
 const MAX_DESCRIPTION_WORDS = 150;
 const MAX_DESCRIPTION_CHARACTERS = 1000;
 const countWords = (value = "") =>
@@ -144,12 +146,20 @@ const CreateItem = () => {
       return "Enter a title for the item.";
     }
 
+    if (formData.title.trim().length > MAX_TITLE_LENGTH) {
+      return `Keep the item title within ${MAX_TITLE_LENGTH} characters.`;
+    }
+
     if (!formData.category) {
       return "Select an item category.";
     }
 
     if (!formData.location.trim()) {
       return "Enter the pickup location.";
+    }
+
+    if (formData.location.trim().length > MAX_LOCATION_LENGTH) {
+      return `Keep the pickup location within ${MAX_LOCATION_LENGTH} characters.`;
     }
 
     if (!formData.description.trim()) {
@@ -274,13 +284,13 @@ const CreateItem = () => {
                     name="title"
                     value={formData.title}
                     onChange={handleChange}
-                    maxLength={100}
+                    maxLength={MAX_TITLE_LENGTH}
                     placeholder="For example: Wooden study table"
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-100"
                   />
 
                   <p className="mt-2 text-right text-xs text-slate-400">
-                    {formData.title.length}/100
+                    {formData.title.length}/{MAX_TITLE_LENGTH}
                   </p>
                 </div>
 
@@ -366,9 +376,13 @@ const CreateItem = () => {
                     name="location"
                     value={formData.location}
                     onChange={handleChange}
+                    maxLength={MAX_LOCATION_LENGTH}
                     placeholder="For example: Ibadan, Oyo"
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-100"
                   />
+                  <p className="mt-2 text-right text-xs text-slate-400">
+                    {formData.location.length}/{MAX_LOCATION_LENGTH}
+                  </p>
                 </div>
 
                 {/* Description */}

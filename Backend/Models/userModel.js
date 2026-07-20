@@ -51,6 +51,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "Name is required"],
       trim: true,
+      maxlength: [60, "Name cannot exceed 60 characters"],
     },
 
     state: {
@@ -66,6 +67,7 @@ const userSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
+      maxlength: [254, "Email address is too long"],
     },
 
     password: {
@@ -78,6 +80,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: "",
+      maxlength: [20, "Phone number cannot exceed 20 characters"],
     },
 
     avatar: {
@@ -125,6 +128,11 @@ const userSchema = new mongoose.Schema(
     },
 
     verificationCodeExpires: {
+      type: Date,
+      default: null,
+    },
+
+    verificationCodeLastSentAt: {
       type: Date,
       default: null,
     },

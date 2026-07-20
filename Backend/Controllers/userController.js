@@ -16,18 +16,44 @@ const {
 
 const strongPasswordRegex =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.#_-])[A-Za-z\d@$!%*?&.#_-]{8,}$/;
+const MAX_NAME_LENGTH = 60;
+const MAX_EMAIL_LENGTH = 254;
+const MAX_PHONE_LENGTH = 20;
 
 // REGISTER
 
 const registerUser = async (req, res) => {
   try {
-    const { name, password, phone, state } = req.body;
+    const { password, state } = req.body;
+    const name = req.body.name?.trim().replace(/\s+/g, " ");
     const email = req.body.email?.trim().toLowerCase();
+    const phone = req.body.phone?.trim() || "";
 
     if (!name || !email || !password || !state) {
       return res.status(400).json({
         success: false,
         message: "Name, email, password and state are required",
+      });
+    }
+
+    if (name.length > MAX_NAME_LENGTH) {
+      return res.status(400).json({
+        success: false,
+        message: `Name cannot exceed ${MAX_NAME_LENGTH} characters`,
+      });
+    }
+
+    if (email.length > MAX_EMAIL_LENGTH) {
+      return res.status(400).json({
+        success: false,
+        message: "Email address is too long",
+      });
+    }
+
+    if (phone.length > MAX_PHONE_LENGTH) {
+      return res.status(400).json({
+        success: false,
+        message: `Phone number cannot exceed ${MAX_PHONE_LENGTH} characters`,
       });
     }
 
@@ -67,6 +93,7 @@ const registerUser = async (req, res) => {
       state,
       verificationCode,
       verificationCodeExpires: new Date(Date.now() + 10 * 60 * 1000),
+      verificationCodeLastSentAt: new Date(),
       isVerified: false,
     });
 
@@ -195,6 +222,7 @@ const verifyEmail = async (req, res) => {
     user.isVerified = true;
     user.verificationCode = "";
     user.verificationCodeExpires = null;
+    user.verificationCodeLastSentAt = null;
 
     await user.save();
 
@@ -275,7 +303,7 @@ const getPublicProfile = async (req, res) => {
 const updateProfile = async (req, res) => {
   try {
     const user = req.user;
-    const name = req.body.name?.trim();
+    const name = req.body.name?.trim().replace(/\s+/g, " ");
     const phone = req.body.phone?.trim();
     const state = req.body.state?.trim();
 
@@ -286,10 +314,24 @@ const updateProfile = async (req, res) => {
       });
     }
 
+    if (name.length > MAX_NAME_LENGTH) {
+      return res.status(400).json({
+        success: false,
+        message: `Name cannot exceed ${MAX_NAME_LENGTH} characters`,
+      });
+    }
+
     if (!state) {
       return res.status(400).json({
         success: false,
         message: "State is required",
+      });
+    }
+
+    if ((phone || "").length > MAX_PHONE_LENGTH) {
+      return res.status(400).json({
+        success: false,
+        message: `Phone number cannot exceed ${MAX_PHONE_LENGTH} characters`,
       });
     }
 
@@ -433,7 +475,7 @@ const logoutUser = async (req, res) => {
 // RESEND VERIFICATION CODE
 const resendVerificationCode = async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = req.body.email?.trim().toLowerCase();
 
     if (!email) {
       return res.status(400).json({
@@ -458,10 +500,24 @@ const resendVerificationCode = async (req, res) => {
       });
     }
 
+    const resendDelay = 60 * 1000;
+    const elapsed = Date.now() - (user.verificationCodeLastSentAt?.getTime() || 0);
+
+    if (elapsed < resendDelay) {
+      const retryAfter = Math.ceil((resendDelay - elapsed) / 1000);
+
+      return res.status(429).json({
+        success: false,
+        message: `Please wait ${retryAfter} seconds before requesting another code`,
+        retryAfter,
+      });
+    }
+
     const verificationCode = generateVerificationCode();
 
     user.verificationCode = verificationCode;
     user.verificationCodeExpires = new Date(Date.now() + 10 * 60 * 1000);
+    user.verificationCodeLastSentAt = new Date();
 
     await user.save();
 
@@ -608,6 +664,13 @@ const changeEmail = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "New email and current password are required",
+      });
+    }
+
+    if (newEmail.length > MAX_EMAIL_LENGTH) {
+      return res.status(400).json({
+        success: false,
+        message: "Email address is too long",
       });
     }
 
@@ -803,26 +866,34 @@ const deleteAccount = async (req, res) => {
         ],
       }),
       Notification.deleteMany({
-        $or: [{ sender: userId }, { recipient: userId }],
+        $or: [
+          { sender: userId },
+          { recipient: userId },
+          { item: { $in: ownedItemIds } },
+        ],
       }),
       ...outgoingRequestCounts.map(({ _id: itemId, count }) =>
-        Item.updateOne({ _id: itemId }, [
-          {
-            $set: {
-              requestCount: {
-                $max: [
-                  0,
-                  {
-                    $subtract: [
-                      { $ifNull: ["$requestCount", 0] },
-                      count,
-                    ],
-                  },
-                ],
+        Item.updateOne(
+          { _id: itemId },
+          [
+            {
+              $set: {
+                requestCount: {
+                  $max: [
+                    0,
+                    {
+                      $subtract: [
+                        { $ifNull: ["$requestCount", 0] },
+                        count,
+                      ],
+                    },
+                  ],
+                },
               },
             },
-          },
-        ]),
+          ],
+          { updatePipeline: true },
+        ),
       ),
     ]);
 

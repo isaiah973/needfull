@@ -6,13 +6,37 @@ const getNotifications = async (req, res) => {
     const notifications = await Notification.find({
       recipient: req.user._id,
     })
-      .populate("sender", "name")
-      .populate("item", "title")
+      .populate({
+        path: "sender",
+        match: { isDeleted: false },
+        select: "name",
+      })
+      .populate({
+        path: "item",
+        match: { isActive: true },
+        select: "title",
+      })
+      .populate("request", "status")
       .sort({ createdAt: -1 });
+
+    const visibleNotifications = notifications.filter(
+      (notification) =>
+        notification.sender && notification.item && notification.request,
+    );
+    const visibleIds = new Set(
+      visibleNotifications.map((notification) => notification._id.toString()),
+    );
+    const staleIds = notifications
+      .filter((notification) => !visibleIds.has(notification._id.toString()))
+      .map((notification) => notification._id);
+
+    if (staleIds.length > 0) {
+      await Notification.deleteMany({ _id: { $in: staleIds } });
+    }
 
     res.status(200).json({
       success: true,
-      notifications,
+      notifications: visibleNotifications,
     });
   } catch (error) {
     res.status(500).json({

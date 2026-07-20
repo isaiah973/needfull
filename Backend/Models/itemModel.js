@@ -11,6 +11,7 @@ const itemSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      maxlength: [70, "Item title cannot exceed 70 characters"],
     },
 
     description: {
@@ -44,6 +45,8 @@ const itemSchema = new mongoose.Schema(
     location: {
       type: String,
       required: true,
+      trim: true,
+      maxlength: [80, "Pickup location cannot exceed 80 characters"],
     },
 
     owner: {
@@ -55,9 +58,23 @@ const itemSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    viewedBy: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+      ],
+      default: [],
+      select: false,
+    },
     requestCount: {
       type: Number,
       default: 0,
+    },
+    contentLockedAt: {
+      type: Date,
+      default: null,
     },
     givenAt: {
       type: Date,

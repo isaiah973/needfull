@@ -18,7 +18,7 @@ const {
 
 const { saveItem, removeSavedItem } = require("../controllers/userController");
 
-const { protect } = require("../Middleware/authMiddleware");
+const { protect, protectOptional } = require("../Middleware/authMiddleware");
 const ownerOnly = require("../Middleware/ownerOnly");
 
 const router = express.Router();
@@ -31,7 +31,7 @@ router.get("/", getAllItems);
 
 router.post("/create", protect, upload.array("images", 5), createItem);
 
-router.post("/:id/view", recordView);
+router.post("/:id/view", protectOptional, recordView);
 
 router.get("/:id/request-status", protect, getRequestStatus);
 

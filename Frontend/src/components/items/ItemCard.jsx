@@ -94,21 +94,21 @@ const ItemCard = ({ item }) => {
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col p-3 sm:p-5">
+      <div className="flex flex-1 flex-col p-2.5 sm:p-3.5">
         <div className="flex items-start justify-between gap-2 sm:gap-3">
-          <h3 className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-charcoal-950 transition-colors group-hover:text-primary-800 sm:min-h-0 sm:text-lg sm:leading-snug">
+          <h3 className="line-clamp-1 text-sm font-bold leading-5 text-charcoal-950 transition-colors group-hover:text-primary-800 sm:text-base">
             {item.title || "Untitled item"}
           </h3>
-          <span className="hidden h-9 w-9 shrink-0 place-items-center rounded-full bg-charcoal-50 text-charcoal-700 transition duration-300 group-hover:bg-primary-600 group-hover:text-white sm:grid">
-            <ArrowUpRight size={17} />
+          <span className="hidden h-7 w-7 shrink-0 place-items-center rounded-full bg-charcoal-50 text-charcoal-700 transition duration-300 group-hover:bg-primary-600 group-hover:text-white sm:grid">
+            <ArrowUpRight size={15} />
           </span>
         </div>
 
-        <p className="mt-2 line-clamp-2 min-h-8 text-[11px] leading-4 text-charcoal-500 sm:min-h-12 sm:text-sm sm:leading-6">
+        <p className="mt-1 line-clamp-1 text-[10px] leading-4 text-charcoal-500 sm:text-xs">
           {description}
         </p>
 
-        <div className="mt-2.5 flex min-w-0 items-center gap-1.5 rounded-xl bg-charcoal-50 px-2 py-1.5 sm:mt-4 sm:gap-2 sm:px-3 sm:py-2">
+        <div className="mt-1.5 flex min-w-0 items-center gap-1.5 rounded-lg bg-charcoal-50 px-2 py-1 sm:gap-2">
           <span className="flex min-w-0 items-center gap-1 text-[10px] font-semibold text-charcoal-600 sm:gap-1.5 sm:text-xs">
             <MapPin
               size={12}
@@ -120,9 +120,9 @@ const ItemCard = ({ item }) => {
           </span>
         </div>
 
-        <div className="mt-3 flex items-center justify-between gap-1.5 border-t border-charcoal-100 pt-3 sm:mt-5 sm:gap-3 sm:pt-4">
+        <div className="mt-2 flex items-center justify-between gap-1.5 border-t border-charcoal-100 pt-2 sm:gap-2">
           <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
-            <div className="grid h-7 w-7 shrink-0 place-items-center overflow-hidden rounded-full bg-charcoal-100 text-[10px] font-bold text-charcoal-800 ring-2 ring-white sm:h-9 sm:w-9 sm:text-xs">
+            <div className="grid h-6 w-6 shrink-0 place-items-center overflow-hidden rounded-full bg-charcoal-100 text-[9px] font-bold text-charcoal-800 ring-2 ring-white sm:h-7 sm:w-7 sm:text-[10px]">
               {ownerAvatar ? (
                 <img
                   src={ownerAvatar}
@@ -134,10 +134,10 @@ const ItemCard = ({ item }) => {
               )}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-[10px] font-bold text-charcoal-700 sm:text-xs">
+              <p className="truncate text-[9px] font-bold text-charcoal-700 sm:text-[11px]">
                 {ownerName}
               </p>
-              <p className="mt-0.5 flex items-center gap-0.5 whitespace-nowrap text-[9px] font-medium text-charcoal-400 sm:gap-1 sm:text-[11px]">
+              <p className="hidden items-center gap-1 whitespace-nowrap text-[9px] font-medium text-charcoal-400 sm:flex">
                 <Clock3 size={9} className="text-primary-600 sm:h-[11px] sm:w-[11px]" />
                 {formatPostedAgo(item.createdAt)}
               </p>
@@ -145,7 +145,7 @@ const ItemCard = ({ item }) => {
           </div>
 
           <div
-            className="flex shrink-0 items-center gap-1 rounded-full bg-primary-50 px-2 py-1.5 text-[9px] font-bold text-primary-800 ring-1 ring-primary-100 sm:gap-1.5 sm:px-2.5 sm:text-[11px]"
+            className="flex shrink-0 items-center gap-1 rounded-full bg-primary-50 px-1.5 py-1 text-[9px] font-bold text-primary-800 ring-1 ring-primary-100 sm:px-2"
             title={`${item.requestCount ?? 0} interested`}
           >
             <Users size={12} className="sm:h-3.5 sm:w-3.5" />

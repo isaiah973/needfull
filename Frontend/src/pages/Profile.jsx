@@ -2,6 +2,8 @@ import {
   ArrowUpRight,
   Camera,
   Check,
+  ChevronLeft,
+  ChevronRight,
   CircleUserRound,
   Clock3,
   Edit3,
@@ -25,18 +27,21 @@ import {
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/axios";
 
 const DEFAULT_PROFILE_AVATAR = "/images/default-profile-avatar.png";
+const MAX_NAME_LENGTH = 60;
+const MAX_EMAIL_LENGTH = 254;
+const MAX_PHONE_LENGTH = 20;
 import { nigerianStates } from "../data/nigerianStates";
 
 const tabs = [
   { id: "profile", label: "My profile", icon: CircleUserRound },
   { id: "items", label: "My items", icon: Package },
-  { id: "received", label: "Interested users", icon: Inbox },
+  { id: "received", label: "Requests to review", icon: Inbox },
   { id: "requested", label: "My requests", icon: Send },
 ];
 
@@ -92,6 +97,7 @@ const EmptyState = ({ icon: Icon, title, description, action }) => (
 
 const Profile = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { updateUser, user, logout } = useAuth();
   const currentUserId = user?._id || user?.id;
   const cacheKey = dashboardStorageKey(currentUserId, "cache");
@@ -104,11 +110,32 @@ const Profile = () => {
   const [activeTab, setActiveTab] = useState(
     () => sessionStorage.getItem(tabKey) || "profile",
   );
+  const linkedTab = searchParams.get("tab");
+  const focusedRequestId = searchParams.get("request");
+  const effectiveActiveTab = tabs.some(({ id }) => id === linkedTab)
+    ? linkedTab
+    : activeTab;
   const [profile, setProfile] = useState(cachedDashboard?.profile || null);
   const [items, setItems] = useState(cachedDashboard?.items || []);
   const [receivedRequests, setReceivedRequests] = useState(
     cachedDashboard?.receivedRequests || [],
   );
+  const [receivedPage, setReceivedPage] = useState(1);
+  const [receivedStatus, setReceivedStatus] = useState("pending");
+  const [receivedLoading, setReceivedLoading] = useState(true);
+  const [receivedRefresh, setReceivedRefresh] = useState(0);
+  const [receivedCounts, setReceivedCounts] = useState({
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    completed: 0,
+  });
+  const [receivedPagination, setReceivedPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 1,
+  });
   const [myRequests, setMyRequests] = useState(
     cachedDashboard?.myRequests || [],
   );
@@ -152,10 +179,9 @@ const Profile = () => {
     Promise.all([
       api.get("/users/profile"),
       api.get("/items/my-items"),
-      api.get("/requests/received"),
       api.get("/requests/my-requests"),
     ])
-      .then(([profileRes, itemsRes, receivedRes, requestedRes]) => {
+      .then(([profileRes, itemsRes, requestedRes]) => {
         if (ignore) return;
 
         const nextProfile = profileRes.data.user;
@@ -167,7 +193,6 @@ const Profile = () => {
         });
         setAvatarPreview(nextProfile.avatar || "");
         setItems(itemsRes.data.items || []);
-        setReceivedRequests(receivedRes.data.requests || []);
         setMyRequests(requestedRes.data.requests || []);
       })
       .catch((error) => {
@@ -188,8 +213,86 @@ const Profile = () => {
   }, []);
 
   useEffect(() => {
-    sessionStorage.setItem(tabKey, activeTab);
-  }, [activeTab, tabKey]);
+    let ignore = false;
+    const directRequest = focusedRequestId || "";
+
+    api
+      .get("/requests/received", {
+        params: {
+          page: directRequest ? 1 : receivedPage,
+          limit: 20,
+          ...(!directRequest &&
+            receivedStatus !== "all" && { status: receivedStatus }),
+          ...(directRequest && { requestId: directRequest }),
+        },
+      })
+      .then(({ data }) => {
+        if (ignore) return;
+        setReceivedRequests(data.requests || []);
+        setReceivedCounts(
+          data.counts || {
+            pending: 0,
+            approved: 0,
+            rejected: 0,
+            completed: 0,
+          },
+        );
+        setReceivedPagination(
+          data.pagination || {
+            page: 1,
+            limit: 20,
+            total: 0,
+            totalPages: 1,
+          },
+        );
+      })
+      .catch(() => {
+        if (!ignore) setReceivedRequests([]);
+      })
+      .finally(() => {
+        if (!ignore) setReceivedLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [
+    focusedRequestId,
+    receivedPage,
+    receivedRefresh,
+    receivedStatus,
+  ]);
+
+  useEffect(() => {
+    sessionStorage.setItem(tabKey, effectiveActiveTab);
+  }, [effectiveActiveTab, tabKey]);
+
+  useEffect(() => {
+    if (
+      loading ||
+      receivedLoading ||
+      effectiveActiveTab !== "received" ||
+      !focusedRequestId
+    ) {
+      return;
+    }
+
+    const frame = requestAnimationFrame(() => {
+      const requestCard = document.getElementById(
+        `received-request-${focusedRequestId}`,
+      );
+
+      requestCard?.scrollIntoView({ behavior: "smooth", block: "center" });
+      requestCard?.focus({ preventScroll: true });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [
+    effectiveActiveTab,
+    focusedRequestId,
+    loading,
+    receivedLoading,
+  ]);
 
   useEffect(() => {
     if (!profile) return;
@@ -242,6 +345,14 @@ const Profile = () => {
 
     if (!form.name.trim()) {
       toast.error("Name is required");
+      return;
+    }
+    if (form.name.trim().length > MAX_NAME_LENGTH) {
+      toast.error(`Name cannot exceed ${MAX_NAME_LENGTH} characters`);
+      return;
+    }
+    if (form.phone.trim().length > MAX_PHONE_LENGTH) {
+      toast.error(`Phone number cannot exceed ${MAX_PHONE_LENGTH} characters`);
       return;
     }
     if (!form.state) {
@@ -306,6 +417,8 @@ const Profile = () => {
       );
 
       toast.success(data.message || "Request updated");
+      setReceivedLoading(true);
+      setReceivedRefresh((current) => current + 1);
     } catch (error) {
       toast.error(error.response?.data?.message || "Could not update request");
     } finally {
@@ -386,9 +499,7 @@ const Profile = () => {
     }
   };
 
-  const pendingReceived = receivedRequests.filter(
-    (request) => request.status === "pending",
-  ).length;
+  const pendingReceived = receivedCounts.pending;
   const activeOutgoing = myRequests.filter((request) =>
     ["pending", "approved"].includes(request.status),
   ).length;
@@ -502,9 +613,12 @@ const Profile = () => {
                 <button
                   type="button"
                   key={id}
-                  onClick={() => setActiveTab(id)}
+                  onClick={() => {
+                    setActiveTab(id);
+                    setSearchParams({});
+                  }}
                   className={`flex items-center gap-3 px-4 py-3 text-left text-sm font-bold transition ${
-                    activeTab === id
+                    effectiveActiveTab === id
                       ? "bg-primary-700 text-white shadow-md"
                       : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                   }`}
@@ -514,7 +628,7 @@ const Profile = () => {
                   {count !== null && (
                     <span
                       className={`ml-auto px-2 py-0.5 text-[10px] ${
-                        activeTab === id
+                        effectiveActiveTab === id
                           ? "bg-white/20 text-white"
                           : "bg-slate-100 text-slate-500"
                       }`}
@@ -529,7 +643,7 @@ const Profile = () => {
         </aside>
 
         <section className="min-w-0">
-          {activeTab === "profile" && (
+          {effectiveActiveTab === "profile" && (
             <>
             <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
               <div className="border-b border-slate-100 px-5 py-5 sm:px-8">
@@ -596,10 +710,14 @@ const Profile = () => {
                             name: event.target.value,
                           }))
                         }
+                        maxLength={MAX_NAME_LENGTH}
                         required
                         className="w-full bg-transparent py-3.5 text-sm outline-none"
                       />
                     </div>
+                    <span className="mt-1.5 block text-right text-[11px] text-slate-400">
+                      {form.name.length}/{MAX_NAME_LENGTH}
+                    </span>
                   </label>
                   <label className="block">
                     <span className="text-sm font-bold text-slate-700">
@@ -616,6 +734,7 @@ const Profile = () => {
                             phone: event.target.value,
                           }))
                         }
+                        maxLength={MAX_PHONE_LENGTH}
                         placeholder="+234..."
                         className="w-full bg-transparent py-3.5 text-sm outline-none"
                       />
@@ -727,6 +846,7 @@ const Profile = () => {
                       <input
                         type="email"
                         value={emailForm.newEmail}
+                        maxLength={MAX_EMAIL_LENGTH}
                         onChange={(event) =>
                           setEmailForm((current) => ({
                             ...current,
@@ -917,7 +1037,7 @@ const Profile = () => {
             </>
           )}
 
-          {activeTab === "items" && (
+          {effectiveActiveTab === "items" && (
             <div>
               <div className="mb-5 flex items-center justify-between">
                 <div>
@@ -1003,35 +1123,79 @@ const Profile = () => {
             </div>
           )}
 
-          {activeTab === "received" && (
+          {effectiveActiveTab === "received" && (
             <div>
-              <div className="mb-5">
-                <h2 className="text-xl font-bold text-slate-900">
-                  Requests from interested users
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Review messages and decide who should receive your items.
-                </p>
+              <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">
+                    Requests to review
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {receivedCounts.pending.toLocaleString()} pending ·{" "}
+                    {receivedPagination.total.toLocaleString()} shown by the
+                    current filter
+                  </p>
+                </div>
+                {!focusedRequestId && (
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                    Status
+                    <select
+                      value={receivedStatus}
+                      onChange={(event) => {
+                        setReceivedLoading(true);
+                        setReceivedStatus(event.target.value);
+                        setReceivedPage(1);
+                      }}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-charcoal-800 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="approved">Approved</option>
+                      <option value="rejected">Declined</option>
+                      <option value="completed">Completed</option>
+                      <option value="all">All requests</option>
+                    </select>
+                  </label>
+                )}
               </div>
 
-              {receivedRequests.length === 0 ? (
+              {receivedLoading ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="h-28 animate-pulse rounded-2xl border border-slate-200 bg-white"
+                    />
+                  ))}
+                </div>
+              ) : receivedRequests.length === 0 ? (
                 <EmptyState
                   icon={Inbox}
-                  title="No one has requested your items yet"
-                  description="New requests will appear here with the person's message and contact details."
+                  title={
+                    focusedRequestId
+                      ? "This request is no longer available"
+                      : `No ${receivedStatus === "all" ? "" : receivedStatus} requests`
+                  }
+                  description="Requests matching this view will appear here."
                 />
               ) : (
-                <div className="space-y-4">
-                  {receivedRequests.map((request) => (
+                <>
+                  <div className="space-y-2.5">
+                    {receivedRequests.map((request) => (
                     <article
                       key={request._id}
-                      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                      id={`received-request-${request._id}`}
+                      tabIndex={-1}
+                      className={`rounded-2xl border bg-white p-3.5 shadow-sm outline-none transition sm:p-4 ${
+                        focusedRequestId === request._id
+                          ? "border-primary-500 ring-4 ring-primary-100"
+                          : "border-slate-200"
+                      }`}
                     >
-                      <div className="flex flex-col gap-4 sm:flex-row">
+                      <div className="flex gap-3">
                         <Link
                           to={`/items/${request.item?._id}`}
                           onClick={rememberDashboardPosition}
-                          className="h-20 w-20 shrink-0 overflow-hidden bg-slate-100"
+                          className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-slate-100 sm:h-16 sm:w-16"
                         >
                           {request.item?.images?.[0] ? (
                             <img
@@ -1051,7 +1215,7 @@ const Profile = () => {
                               <p className="text-xs font-semibold text-slate-400">
                                 Request for
                               </p>
-                              <h3 className="font-bold text-slate-800">
+                              <h3 className="line-clamp-1 text-sm font-bold text-slate-800">
                                 {request.item?.title || "Unavailable item"}
                               </h3>
                             </div>
@@ -1060,10 +1224,10 @@ const Profile = () => {
 
                           <Link
                             to={`/users/${request.requester?._id}`}
-                            className="mt-4 flex w-fit items-center gap-3 transition hover:bg-charcoal-50"
+                            className="mt-2 flex w-fit max-w-full items-center gap-2 transition hover:bg-charcoal-50"
                             title={`View ${request.requester?.name || "user"}'s profile`}
                           >
-                            <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden bg-charcoal-100 text-sm font-bold text-charcoal-800">
+                            <div className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-charcoal-100 text-xs font-bold text-charcoal-800">
                               <img
                                 src={
                                   request.requester?.avatar ||
@@ -1076,28 +1240,28 @@ const Profile = () => {
                               />
                             </div>
                             <div className="min-w-0">
-                              <p className="truncate text-sm font-bold text-slate-800">
+                              <p className="truncate text-xs font-bold text-slate-800">
                                 {request.requester?.name || "Needful member"}
                               </p>
-                              <p className="truncate text-xs text-slate-500">
+                              <p className="truncate text-[10px] text-slate-500">
                                 {request.requester?.email}
                               </p>
                             </div>
                           </Link>
 
-                          <blockquote className="mt-4 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
+                          <blockquote className="mt-2 line-clamp-2 rounded-lg bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
                             “{request.message}”
                           </blockquote>
 
                           {request.status === "pending" && (
-                            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                            <div className="mt-2.5 flex flex-wrap gap-2">
                               <button
                                 type="button"
                                 onClick={() =>
                                   handleRequestAction(request, "approve")
                                 }
                                 disabled={Boolean(actingOn)}
-                                className="inline-flex items-center justify-center gap-2 bg-primary-700 px-4 py-2.5 text-xs font-bold text-white hover:bg-primary-800 disabled:opacity-50"
+                                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary-700 px-3 py-2 text-[11px] font-bold text-white hover:bg-primary-800 disabled:opacity-50"
                               >
                                 {actingOn === `${request._id}-approve` ? (
                                   <LoaderCircle size={15} className="animate-spin" />
@@ -1112,7 +1276,7 @@ const Profile = () => {
                                   handleRequestAction(request, "reject")
                                 }
                                 disabled={Boolean(actingOn)}
-                                className="inline-flex items-center justify-center gap-2 border border-charcoal-300 px-4 py-2.5 text-xs font-bold text-charcoal-700 hover:bg-charcoal-50 disabled:opacity-50"
+                                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-charcoal-300 px-3 py-2 text-[11px] font-bold text-charcoal-700 hover:bg-charcoal-50 disabled:opacity-50"
                               >
                                 <X size={15} />
                                 Decline
@@ -1127,7 +1291,7 @@ const Profile = () => {
                                 handleRequestAction(request, "complete")
                               }
                               disabled={Boolean(actingOn)}
-                              className="mt-4 inline-flex items-center justify-center gap-2 bg-charcoal-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-charcoal-800 disabled:opacity-50"
+                              className="mt-2.5 inline-flex items-center justify-center gap-1.5 rounded-lg bg-charcoal-900 px-3 py-2 text-[11px] font-bold text-white hover:bg-charcoal-800 disabled:opacity-50"
                             >
                               <PackageCheck size={15} />
                               Mark item as given
@@ -1136,13 +1300,60 @@ const Profile = () => {
                         </div>
                       </div>
                     </article>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+
+                  {!focusedRequestId &&
+                    receivedPagination.totalPages > 1 && (
+                      <div className="mt-5 flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                        <p className="text-xs font-semibold text-slate-500">
+                          Page {receivedPagination.page.toLocaleString()} of{" "}
+                          {receivedPagination.totalPages.toLocaleString()}
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReceivedLoading(true);
+                              setReceivedPage((page) =>
+                                Math.max(1, page - 1),
+                              );
+                            }}
+                            disabled={receivedPagination.page <= 1}
+                            className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-charcoal-700 hover:border-primary-300 disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label="Previous requests page"
+                          >
+                            <ChevronLeft size={17} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReceivedLoading(true);
+                              setReceivedPage((page) =>
+                                Math.min(
+                                  receivedPagination.totalPages,
+                                  page + 1,
+                                ),
+                              );
+                            }}
+                            disabled={
+                              receivedPagination.page >=
+                              receivedPagination.totalPages
+                            }
+                            className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-charcoal-700 hover:border-primary-300 disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label="Next requests page"
+                          >
+                            <ChevronRight size={17} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                </>
               )}
             </div>
           )}
 
-          {activeTab === "requested" && (
+          {effectiveActiveTab === "requested" && (
             <div>
               <div className="mb-5">
                 <h2 className="text-xl font-bold text-slate-900">

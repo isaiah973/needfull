@@ -28,6 +28,10 @@ const PasswordRequirement = ({ valid, children }) => (
   </p>
 );
 
+const MAX_NAME_LENGTH = 60;
+const MAX_EMAIL_LENGTH = 254;
+const MAX_PHONE_LENGTH = 20;
+
 const Register = () => {
   const navigate = useNavigate();
   const { register, loading } = useAuth();
@@ -77,8 +81,16 @@ const Register = () => {
       setError("Enter your full name.");
       return;
     }
+    if (formData.name.trim().length > MAX_NAME_LENGTH) {
+      setError(`Keep your full name within ${MAX_NAME_LENGTH} characters.`);
+      return;
+    }
     if (!formData.email.trim()) {
       setError("Enter your email address.");
+      return;
+    }
+    if (formData.email.trim().length > MAX_EMAIL_LENGTH) {
+      setError("Email address is too long.");
       return;
     }
     if (!formData.state) {
@@ -179,12 +191,16 @@ const Register = () => {
                       name="name"
                       value={formData.name}
                       onChange={updateField}
+                      maxLength={MAX_NAME_LENGTH}
                       required
                       autoComplete="name"
                       placeholder="Your full name"
                       className="w-full bg-transparent px-3 py-3.5 text-sm text-charcoal-900 outline-none placeholder:text-charcoal-400"
                     />
                   </div>
+                  <span className="mt-1.5 block text-right text-[11px] text-charcoal-400">
+                    {formData.name.length}/{MAX_NAME_LENGTH}
+                  </span>
                 </label>
 
                 <label className="block">
@@ -198,6 +214,7 @@ const Register = () => {
                       name="email"
                       value={formData.email}
                       onChange={updateField}
+                      maxLength={MAX_EMAIL_LENGTH}
                       required
                       autoComplete="email"
                       placeholder="you@example.com"
@@ -249,6 +266,7 @@ const Register = () => {
                       name="phone"
                       value={formData.phone}
                       onChange={updateField}
+                      maxLength={MAX_PHONE_LENGTH}
                       autoComplete="tel"
                       inputMode="tel"
                       placeholder="+234..."
