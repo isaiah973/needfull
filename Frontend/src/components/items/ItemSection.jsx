@@ -95,7 +95,7 @@ const ItemsSection = () => {
   }`;
 
   return (
-    <section id="items" className="bg-slate-50 py-10 sm:py-16">
+    <section id="items" className="scroll-mt-20 bg-slate-50 py-10 sm:py-16">
       <div className="mx-auto max-w-7xl px-3 sm:px-6">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>

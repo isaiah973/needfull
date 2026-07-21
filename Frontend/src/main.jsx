@@ -23,6 +23,10 @@ createRoot(document.getElementById("root")).render(
           position="top-right"
           toastOptions={{
             duration: 3000,
+            style: {
+              maxWidth: "calc(100vw - 24px)",
+              overflowWrap: "anywhere",
+            },
             error: {
               style: {
                 background: "#fef2f2",
