@@ -226,7 +226,9 @@ const ItemDetails = () => {
       setSaved((current) => !current);
       toast.success(data.message || (saved ? "Item removed" : "Item saved"));
     } catch (err) {
-      toast.error(err.response?.data?.message || "Could not update saved items");
+      toast.error(
+        err.response?.data?.message || "Could not update saved items",
+      );
     } finally {
       setSaving(false);
     }
@@ -264,6 +266,7 @@ const ItemDetails = () => {
     setReportDialogOpen(true);
   };
 
+  // Handle report submission
   const handleReport = async (event) => {
     event.preventDefault();
 
@@ -311,9 +314,7 @@ const ItemDetails = () => {
           `needful_dashboard_${currentUserId}_tab`,
           "items",
         );
-        sessionStorage.removeItem(
-          `needful_dashboard_${currentUserId}_cache`,
-        );
+        sessionStorage.removeItem(`needful_dashboard_${currentUserId}_cache`);
       }
 
       toast.success(data.message || "Item deleted");
@@ -389,7 +390,9 @@ const ItemDetails = () => {
           <ChevronRight size={14} className="shrink-0 text-slate-300" />
           <span className="shrink-0">{item.category || "Items"}</span>
           <ChevronRight size={14} className="shrink-0 text-slate-300" />
-          <span className="truncate font-medium text-slate-800">{item.title}</span>
+          <span className="truncate font-medium text-slate-800">
+            {item.title}
+          </span>
         </div>
 
         <div className="grid min-w-0 items-start gap-8 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)] lg:gap-12">
@@ -404,7 +407,9 @@ const ItemDetails = () => {
               ) : (
                 <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-400">
                   <ImageOff size={42} strokeWidth={1.5} />
-                  <span className="text-sm font-medium">No image available</span>
+                  <span className="text-sm font-medium">
+                    No image available
+                  </span>
                 </div>
               )}
 
@@ -693,7 +698,9 @@ const ItemDetails = () => {
                 </div>
               )}
               <div className="min-w-0">
-                <p className="truncate font-bold text-slate-800">{item.title}</p>
+                <p className="truncate font-bold text-slate-800">
+                  {item.title}
+                </p>
                 <p className="mt-0.5 truncate text-xs text-slate-500">
                   To {ownerName}
                 </p>
@@ -720,7 +727,9 @@ const ItemDetails = () => {
               required
               placeholder="Introduce yourself and explain briefly why this item would be helpful to you..."
               aria-invalid={Boolean(messageError)}
-              aria-describedby={messageError ? "request-message-error" : undefined}
+              aria-describedby={
+                messageError ? "request-message-error" : undefined
+              }
               className={`mt-2 w-full resize-none rounded-2xl border bg-white px-4 py-3 text-sm leading-6 text-slate-800 outline-none transition placeholder:text-slate-400 focus:ring-4 ${
                 messageError
                   ? "border-charcoal-500 focus:border-charcoal-700 focus:ring-charcoal-100"
