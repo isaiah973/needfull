@@ -11,6 +11,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import toast from "react-hot-toast";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -89,6 +90,7 @@ const Login = () => {
       localStorage.removeItem("needful_remembered_email");
     }
 
+    toast.success(result.message || "Welcome back! You are now signed in.");
     navigate("/", { replace: true });
   };
 
@@ -237,7 +239,7 @@ const Login = () => {
                 className={`mt-6 border-l-4 px-4 py-3 text-sm font-semibold leading-6 ${
                   message.type === "success"
                     ? "border-primary-600 bg-primary-50 text-primary-900"
-                    : "border-charcoal-700 bg-charcoal-100 text-charcoal-900"
+                    : "border-red-600 bg-red-50 text-red-800"
                 }`}
               >
                 {message.text}

@@ -6,7 +6,8 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { categories } from "../../data/categories";
 import { getItems } from "../../services/itemService";
@@ -27,9 +28,6 @@ const ItemSkeleton = () => (
 
 const ItemsSection = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const search = searchParams.get("search") || "";
@@ -42,41 +40,28 @@ const ItemsSection = () => {
     Boolean,
   ).length;
 
-  useEffect(() => {
-    let ignore = false;
-
-    const fetchItems = async () => {
-      try {
-        setLoading(true);
-        setError("");
-
-        const data = await getItems({
+  const {
+    data: items = [],
+    error,
+    isFetching,
+    isPending,
+    refetch,
+  } = useQuery({
+    queryKey: ["items", { search, category, location, condition, sort }],
+    queryFn: () =>
+      getItems({
           ...(search && { search }),
           ...(category && { category }),
           ...(location && { location }),
           ...(condition && { condition }),
           sort,
-        });
+      }),
+    staleTime: 0,
+  });
 
-        if (!ignore) setItems(data);
-      } catch (err) {
-        if (!ignore) {
-          setError(
-            err.response?.data?.message ||
-              "We could not load the items. Please try again.",
-          );
-        }
-      } finally {
-        if (!ignore) setLoading(false);
-      }
-    };
-
-    fetchItems();
-
-    return () => {
-      ignore = true;
-    };
-  }, [category, condition, location, search, sort]);
+  const errorMessage =
+    error?.response?.data?.message ||
+    "We could not load the items. Please try again.";
 
   const applyFilters = (event) => {
     event.preventDefault();
@@ -130,7 +115,9 @@ const ItemsSection = () => {
               className="text-sm font-semibold text-charcoal-600"
               aria-live="polite"
             >
-              {loading ? "Finding items…" : resultLabel}
+              {isPending
+                ? "Finding items…"
+                : `${resultLabel}${isFetching ? " · Updating…" : ""}`}
             </p>
             <button
               type="button"
@@ -286,22 +273,22 @@ const ItemsSection = () => {
         </form>
 
         <div className="mt-7 sm:mt-9">
-          {loading ? (
+          {isPending ? (
             <div className="grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
               {Array.from({ length: 8 }).map((_, index) => (
                 <ItemSkeleton key={index} />
               ))}
             </div>
-          ) : error ? (
-            <div className="rounded-2xl border border-charcoal-200 bg-white px-6 py-14 text-center">
-              <PackageSearch size={30} className="mx-auto text-charcoal-400" />
-              <p className="mt-4 font-bold text-charcoal-800">
+          ) : error && items.length === 0 ? (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-6 py-14 text-center">
+              <PackageSearch size={30} className="mx-auto text-red-500" />
+              <p className="mt-4 font-bold text-red-800">
                 Items could not be loaded
               </p>
-              <p className="mt-2 text-sm text-slate-500">{error}</p>
+              <p className="mt-2 text-sm text-red-700">{errorMessage}</p>
               <button
                 type="button"
-                onClick={() => window.location.reload()}
+                onClick={() => refetch()}
                 className="mt-5 rounded-xl bg-charcoal-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-charcoal-800"
               >
                 Try again

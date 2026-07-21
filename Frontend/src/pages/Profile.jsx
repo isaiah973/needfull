@@ -1013,8 +1013,8 @@ const Profile = () => {
 
                 <div className="grid gap-5 bg-charcoal-50/70 p-5 sm:p-8 lg:grid-cols-[220px_minmax(0,1fr)]">
                   <div>
-                    <div className="flex items-center gap-2 font-bold text-charcoal-900">
-                      <Trash2 size={17} />
+                    <div className="flex items-center gap-2 font-bold text-red-800">
+                      <Trash2 size={17} className="text-red-600" />
                       Delete account
                     </div>
                   </div>
@@ -1026,7 +1026,7 @@ const Profile = () => {
                     <button
                       type="button"
                       onClick={() => setDeleteDialogOpen(true)}
-                      className="shrink-0 border border-charcoal-400 px-5 py-3 text-sm font-bold text-charcoal-800 transition hover:bg-charcoal-900 hover:text-white"
+                      className="shrink-0 border border-red-300 bg-red-50 px-5 py-3 text-sm font-bold text-red-700 transition hover:border-red-700 hover:bg-red-700 hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-red-100"
                     >
                       Delete account
                     </button>
@@ -1454,7 +1454,7 @@ const Profile = () => {
             className="w-full rounded-t-3xl bg-white p-6 shadow-2xl sm:max-w-md sm:rounded-3xl sm:p-7"
           >
             <div className="flex items-start justify-between gap-4">
-              <div className="grid h-12 w-12 place-items-center bg-charcoal-100 text-charcoal-800">
+              <div className="grid h-12 w-12 place-items-center bg-red-50 text-red-700">
                 <Trash2 size={22} />
               </div>
               <button
@@ -1494,7 +1494,7 @@ const Profile = () => {
                 }
                 required
                 autoComplete="current-password"
-                className="mt-2 w-full border border-slate-200 px-4 py-3 text-sm outline-none focus:border-charcoal-500 focus:ring-4 focus:ring-charcoal-100"
+                className="mt-2 w-full border border-slate-200 px-4 py-3 text-sm outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100"
               />
             </label>
 
@@ -1513,7 +1513,7 @@ const Profile = () => {
                 required
                 autoComplete="off"
                 placeholder="DELETE"
-                className="mt-2 w-full border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-charcoal-500 focus:ring-4 focus:ring-charcoal-100"
+                className="mt-2 w-full border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100"
               />
             </label>
 
@@ -1533,7 +1533,7 @@ const Profile = () => {
                   deleteForm.confirmation !== "DELETE" ||
                   !deleteForm.currentPassword
                 }
-                className="inline-flex flex-1 items-center justify-center gap-2 bg-charcoal-950 px-4 py-3 text-sm font-bold text-white hover:bg-charcoal-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                className="inline-flex flex-1 items-center justify-center gap-2 bg-red-700 px-4 py-3 text-sm font-bold text-white hover:bg-red-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-red-100 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
                 {securityAction === "delete" ? (
                   <LoaderCircle size={17} className="animate-spin" />

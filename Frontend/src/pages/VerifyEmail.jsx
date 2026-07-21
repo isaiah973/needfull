@@ -221,7 +221,7 @@ const VerifyEmail = () => {
                 className={`mx-auto mt-6 flex max-w-lg items-start gap-3 rounded-xl border px-4 py-3 text-sm font-semibold leading-6 ${
                   message.type === "success"
                     ? "border-primary-200 bg-primary-50 text-primary-900"
-                    : "border-charcoal-300 bg-charcoal-50 text-charcoal-900"
+                    : "border-red-200 bg-red-50 text-red-800"
                 }`}
               >
                 {message.type === "success" ? (

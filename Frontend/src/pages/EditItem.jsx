@@ -283,7 +283,7 @@ const EditItem = () => {
           >
             <div className="space-y-5">
               {error && (
-                <p className="border-l-4 border-charcoal-700 bg-charcoal-50 px-4 py-3 text-sm font-semibold text-charcoal-800">
+                <p className="border-l-4 border-red-600 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
                   {error}
                 </p>
               )}

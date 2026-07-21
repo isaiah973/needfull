@@ -223,7 +223,7 @@ const Navbar = () => {
           <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary-700 text-lg font-black text-white shadow-lg shadow-primary-700/20">
             N
           </span>
-          <span className="hidden text-xl font-extrabold tracking-tight text-charcoal-900 sm:block">
+          <span className="text-lg font-extrabold tracking-tight text-charcoal-900 sm:text-xl">
             Needful
           </span>
         </button>
@@ -644,7 +644,12 @@ const Navbar = () => {
         <div className="nav-mobile-enter border-t border-slate-100 bg-white shadow-xl sm:hidden">
           <div className="max-h-[calc(100vh-72px)] overflow-y-auto px-4 py-4">
             {isAuthenticated && (
-              <div className="mb-4 flex items-center gap-3 rounded-2xl bg-charcoal-50 p-3">
+              <button
+                type="button"
+                onClick={() => openDashboardTab("profile")}
+                className="mb-4 flex w-full items-center gap-3 rounded-2xl bg-charcoal-50 p-3 text-left transition hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary-100"
+                aria-label="Open your profile"
+              >
                 <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-primary-100 font-bold text-primary-800">
                   {user?.avatar ? (
                     <img
@@ -664,7 +669,8 @@ const Navbar = () => {
                     {user?.email}
                   </span>
                 </span>
-              </div>
+                <ChevronRight size={17} className="ml-auto shrink-0 text-slate-400" />
+              </button>
             )}
 
             <div className="space-y-1">

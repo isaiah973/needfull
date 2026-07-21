@@ -581,7 +581,7 @@ const CreateItem = () => {
           {error && (
             <div
               role="alert"
-              className="border-x border-b border-charcoal-300 bg-charcoal-100 px-6 py-4 text-sm font-medium text-charcoal-800 sm:px-9"
+              className="border-x border-b border-red-200 bg-red-50 px-6 py-4 text-sm font-medium text-red-800 sm:px-9"
             >
               {error}
             </div>

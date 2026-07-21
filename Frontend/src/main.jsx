@@ -23,6 +23,17 @@ createRoot(document.getElementById("root")).render(
           position="top-right"
           toastOptions={{
             duration: 3000,
+            error: {
+              style: {
+                background: "#fef2f2",
+                color: "#991b1b",
+                border: "1px solid #fecaca",
+              },
+              iconTheme: {
+                primary: "#dc2626",
+                secondary: "#fef2f2",
+              },
+            },
           }}
         />
       </BrowserRouter>

@@ -31,6 +31,24 @@ body {
   overflow-x: hidden;
 }
 
+:is(input, textarea, select) {
+  accent-color: var(--color-primary-600);
+  caret-color: var(--color-primary-700);
+}
+
+::selection {
+  background: var(--color-primary-200);
+  color: var(--color-charcoal-950);
+}
+
+:is(input, textarea):-webkit-autofill,
+:is(input, textarea):-webkit-autofill:hover,
+:is(input, textarea):-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--color-charcoal-950);
+  box-shadow: 0 0 0 1000px white inset;
+  caret-color: var(--color-primary-700);
+}
+
 @keyframes nav-dropdown-in {
   from {
     opacity: 0;
