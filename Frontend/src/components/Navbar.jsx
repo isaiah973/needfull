@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { categories } from "../data/categories";
 import { useAuth } from "../context/AuthContext";
@@ -204,6 +205,7 @@ const Navbar = () => {
     setMobileOpen(false);
     await logout();
     navigate("/");
+    toast.success("You have been logged out safely.");
   };
 
   return (

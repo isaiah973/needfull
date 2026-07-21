@@ -23,6 +23,7 @@ const app = express();
 connectDB();
 
 const normalizeOrigin = (value = "") => value.trim().replace(/\/+$/, "");
+
 const allowedOrigins = new Set([
   "http://localhost:5173",
   ...String(process.env.FRONTEND_URL || "")
@@ -66,7 +67,7 @@ app.get("/", (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });
 app.use(errorHandler);
