@@ -9,14 +9,14 @@ const {
   updateItem,
   deleteItem,
   getMyItems,
-} = require("../controllers/itemController");
+} = require("../Controllers/itemController");
 
 const {
   createRequest,
   getRequestStatus,
-} = require("../controllers/requestController");
+} = require("../Controllers/requestController");
 
-const { saveItem, removeSavedItem } = require("../controllers/userController");
+const { saveItem, removeSavedItem } = require("../Controllers/userController");
 
 const { protect, protectOptional } = require("../Middleware/authMiddleware");
 const ownerOnly = require("../Middleware/ownerOnly");
